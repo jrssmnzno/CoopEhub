@@ -1,0 +1,513 @@
+@import "bootstrap/dist/css/bootstrap.min.css";
+
+/* Coop Ehub Branding Variables */
+:root {
+    --ss-primary: #0d6efd;
+    --ss-primary-dark: #0b5ed7;
+    --ss-secondary: #6c757d;
+    --ss-success: #198754;
+    --ss-danger: #dc3545;
+    --ss-warning: #ffc107;
+    --ss-info: #0dcaf0;
+    --ss-light: #f8f9fa;
+    --ss-light-gray: #f5f6f7;
+    --ss-dark-gray: #e9ecef;
+    --ss-text-primary: #212529;
+    --ss-text-secondary: #6c757d;
+    --ss-border-color: #dee2e6;
+}
+
+/* Base Typography */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: var(--ss-text-primary);
+    background-color: var(--ss-light);
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: var(--ss-text-primary);
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+/* Sidebar Navigation */
+.sidebar-nav {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+    padding: 2rem 0;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.sidebar-nav .nav-link {
+    color: rgba(255, 255, 255, 0.85);
+    padding: 1rem 1.5rem;
+    border-left: 3px solid transparent;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.sidebar-nav .nav-link:hover {
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-left-color: #fff;
+}
+
+.sidebar-nav .nav-link.active {
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.15);
+    border-left-color: #fff;
+}
+
+.sidebar-nav .nav-link i {
+    font-size: 1.25rem;
+    width: 1.5rem;
+}
+
+.sidebar-brand {
+    color: #fff;
+    padding: 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 1rem;
+    font-weight: 700;
+    font-size: 1.3rem;
+    text-align: center;
+}
+
+/* Main Content Area */
+.main-content {
+    background-color: var(--ss-light);
+    padding: 2rem;
+    min-height: 100vh;
+}
+
+/* Header/Top Bar */
+.app-header {
+    background-color: #fff;
+    border-bottom: 1px solid var(--ss-border-color);
+    padding: 1.5rem 2rem;
+    margin-bottom: 2rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.app-header h1,
+.app-header h2 {
+    margin: 0;
+    color: var(--ss-primary);
+}
+
+/* Cards */
+.card {
+    border: 1px solid var(--ss-border-color);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    border-radius: 0.5rem;
+    transition: all 0.3s ease;
+    margin-bottom: 1.5rem;
+}
+
+.card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    background-color: var(--ss-light-gray);
+    border-bottom: 1px solid var(--ss-border-color);
+    font-weight: 600;
+    color: var(--ss-primary);
+    padding: 1rem 1.5rem;
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+/* Summary Cards */
+.summary-card {
+    border-left: 4px solid var(--ss-primary);
+    background: linear-gradient(135deg, #f8f9fa 0%, #fff 100%);
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+}
+
+.summary-card.success {
+    border-left-color: var(--ss-success);
+}
+
+.summary-card.warning {
+    border-left-color: var(--ss-warning);
+}
+
+.summary-card.danger {
+    border-left-color: var(--ss-danger);
+}
+
+.summary-card.info {
+    border-left-color: var(--ss-info);
+}
+
+.summary-card-title {
+    font-size: 0.875rem;
+    color: var(--ss-text-secondary);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.5rem;
+}
+
+.summary-card-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--ss-primary);
+}
+
+.summary-card.success .summary-card-value {
+    color: var(--ss-success);
+}
+
+.summary-card.warning .summary-card-value {
+    color: var(--ss-warning);
+    color-adjust: unset;
+}
+
+.summary-card.danger .summary-card-value {
+    color: var(--ss-danger);
+}
+
+.summary-card.info .summary-card-value {
+    color: var(--ss-info);
+}
+
+/* Tables */
+.table {
+    margin-bottom: 0;
+}
+
+.table thead th {
+    background-color: var(--ss-light-gray);
+    color: var(--ss-primary);
+    font-weight: 600;
+    border-color: var(--ss-border-color);
+    padding: 1rem;
+    text-transform: uppercase;
+    font-size: 0.875rem;
+}
+
+.table tbody td {
+    border-color: var(--ss-border-color);
+    padding: 0.875rem 1rem;
+    vertical-align: middle;
+}
+
+.table tbody tr:hover {
+    background-color: var(--ss-light);
+}
+
+/* Badges */
+.badge {
+    padding: 0.5rem 0.75rem;
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+.badge.status-active {
+    background-color: var(--ss-success);
+    color: #fff;
+}
+
+.badge.status-client {
+    background-color: var(--ss-warning);
+    color: #000;
+}
+
+.badge.status-inactive {
+    background-color: var(--ss-danger);
+    color: #fff;
+}
+
+/* Buttons */
+.btn {
+    font-weight: 600;
+    border-radius: 0.375rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background-color: var(--ss-primary);
+    border-color: var(--ss-primary);
+}
+
+.btn-primary:hover {
+    background-color: var(--ss-primary-dark);
+    border-color: var(--ss-primary-dark);
+    box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
+}
+
+/* Forms */
+.form-label {
+    font-weight: 600;
+    color: var(--ss-text-primary);
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+}
+
+.form-control,
+.form-select {
+    border-color: var(--ss-border-color);
+    border-radius: 0.375rem;
+    padding: 0.625rem 0.875rem;
+    font-size: 0.95rem;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--ss-primary);
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+}
+
+/* Modal */
+.modal-header {
+    background-color: var(--ss-light-gray);
+    border-bottom: 1px solid var(--ss-border-color);
+}
+
+.modal-title {
+    color: var(--ss-primary);
+    font-weight: 600;
+}
+
+/* Loan Summary Component */
+.loan-summary {
+    background: linear-gradient(135deg, #f8f9fa 0%, #fff 100%);
+    padding: 2rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--ss-border-color);
+}
+
+.loan-input-group {
+    margin-bottom: 1.5rem;
+}
+
+.loan-input-label {
+    font-weight: 600;
+    color: var(--ss-text-primary);
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.loan-input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--ss-border-color);
+    border-radius: 0.375rem;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.loan-input:focus {
+    outline: none;
+    border-color: var(--ss-primary);
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
+}
+
+.loan-result {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background-color: #fff;
+    border-left: 4px solid var(--ss-primary);
+    border-radius: 0.375rem;
+    margin-top: 1rem;
+}
+
+.loan-result-label {
+    font-weight: 600;
+    color: var(--ss-text-secondary);
+    font-size: 0.9rem;
+}
+
+.loan-result-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--ss-primary);
+}
+
+/* Receipt Log & Ledger Tables */
+.transaction-table {
+    width: 100%;
+    margin-top: 1.5rem;
+}
+
+.transaction-table thead {
+    background-color: var(--ss-light-gray);
+}
+
+.transaction-table th {
+    color: var(--ss-primary);
+    font-weight: 600;
+    padding: 1rem;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    border: none;
+}
+
+.transaction-table td {
+    padding: 0.875rem 1rem;
+    border-bottom: 1px solid var(--ss-border-color);
+}
+
+.transaction-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.amount-positive {
+    color: var(--ss-success);
+    font-weight: 600;
+}
+
+.amount-negative {
+    color: var(--ss-danger);
+    font-weight: 600;
+}
+
+/* Promissory Note */
+.promissory-note {
+    background-color: #fff;
+    padding: 2rem;
+    margin: 1rem 0;
+    border: 1px solid var(--ss-border-color);
+    border-radius: 0.5rem;
+}
+
+.note-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    border-bottom: 2px solid var(--ss-primary);
+    padding-bottom: 1rem;
+}
+
+.note-content {
+    line-height: 1.8;
+    margin-bottom: 2rem;
+}
+
+.note-signature {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--ss-border-color);
+}
+
+.signature-block {
+    text-align: center;
+    width: 30%;
+}
+
+.signature-line {
+    border-top: 1px solid var(--ss-text-primary);
+    margin-top: 2rem;
+    padding-top: 0.5rem;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+/* Print Styles */
+@media print {
+    body {
+        background-color: #fff;
+    }
+
+    .sidebar-nav,
+    .app-header,
+    .btn,
+    .no-print {
+        display: none !important;
+    }
+
+    .promissory-note {
+        border: none;
+        page-break-inside: avoid;
+        margin: 0;
+        padding: 0;
+    }
+
+    .main-content {
+        padding: 0;
+        margin: 0;
+    }
+
+    @page {
+        size: A4;
+        margin: 1cm;
+    }
+
+    .note-signature {
+        page-break-inside: avoid;
+    }
+}
+
+/* Utilities */
+.text-muted {
+    color: var(--ss-text-secondary) !important;
+}
+
+.text-primary {
+    color: var(--ss-primary) !important;
+}
+
+.border-primary {
+    border-color: var(--ss-primary) !important;
+}
+
+.bg-light {
+    background-color: var(--ss-light) !important;
+}
+
+.shadow-sm {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+.shadow-md {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .sidebar-nav {
+        position: relative;
+        min-height: auto;
+        padding: 1rem 0;
+    }
+
+    .main-content {
+        padding: 1rem;
+    }
+
+    .app-header {
+        padding: 1rem;
+    }
+
+    .summary-card {
+        margin-bottom: 1rem;
+    }
+
+    .note-signature {
+        flex-direction: column;
+    }
+
+    .signature-block {
+        width: 100%;
+        margin-bottom: 2rem;
+    }
+}
