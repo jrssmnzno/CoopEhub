@@ -10,10 +10,13 @@ use App\Http\Controllers\AuditLedgerController;
 use App\Http\Controllers\PromissoryNoteController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\LoanRequestController;
 use App\Http\Controllers\Admin\LoanRequestController as AdminLoanRequestController;
 use App\Http\Controllers\AttendanceKioskController;
 use App\Http\Controllers\Admin\MeetingManagementController;
+use App\Http\Controllers\Admin\ChangePasswordController;
+use App\Http\Controllers\Member\ChangePasswordController as MemberChangePasswordController;
 
 // Landing page / Login
 Route::get('/', function () {
@@ -21,7 +24,7 @@ Route::get('/', function () {
         return redirect()->route('dashboard');
     }
     return view('auth.login');
-})->name('welcome');
+});
 
 // Authentication Routes
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
@@ -30,6 +33,24 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout')->midd
 
 Route::get('/register', [RegisterController::class, 'showRegistrationForm'])->name('register');
 Route::post('/register', [RegisterController::class, 'register']);
+
+// Password Reset Routes
+Route::get('/forgot-password', [PasswordResetController::class, 'showForgotForm'])->name('password.request');
+Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLink'])->name('password.email');
+Route::get('/reset-password/{token}', [PasswordResetController::class, 'showResetForm'])->name('password.reset');
+Route::post('/reset-password', [PasswordResetController::class, 'resetPassword'])->name('password.update');
+
+// Admin Change Password Routes
+Route::middleware(['auth', 'admin'])->group(function () {
+    Route::get('/admin/change-password', [ChangePasswordController::class, 'showChangePasswordForm'])->name('admin.change-password.show');
+    Route::post('/admin/change-password', [ChangePasswordController::class, 'updatePassword'])->name('admin.change-password.update');
+});
+
+// Member Change Password Routes
+Route::middleware(['auth'])->group(function () {
+    Route::get('/member/change-password', [MemberChangePasswordController::class, 'showChangePasswordForm'])->name('member.change-password.show');
+    Route::post('/member/change-password', [MemberChangePasswordController::class, 'updatePassword'])->name('member.change-password.update');
+});
 
 // Validation Routes (AJAX)
 Route::post('/validate-member-id', [RegisterController::class, 'validateMemberId'])->name('validate-member-id');
@@ -44,6 +65,8 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware('admin')->group(function () {
         // Members CRUD
         Route::resource('members', MemberController::class);
+        Route::post('/members/{member}/loans', [MemberController::class, 'storeLoan'])->name('members.storeLoan');
+        Route::post('/api/members/{member}/create-account', [MemberController::class, 'createAccount'])->name('members.createAccount');
         
         // Receipt Log
         Route::get('/receipt-log', [ReceiptLogController::class, 'index'])->name('receipt-log.index');
@@ -52,13 +75,14 @@ Route::middleware(['auth'])->group(function () {
         
         // Loan Portfolio / SOA
         Route::get('/loan-portfolio', [LoanPortfolioController::class, 'index'])->name('loan-portfolio.index');
-        Route::get('/loan-portfolio/member/{member}', [LoanPortfolioController::class, 'showMember'])->name('loan-portfolio.member');
+        Route::get('/loan-portfolio/member/{memberId}', [LoanPortfolioController::class, 'showMember'])->name('loan-portfolio.member');
         Route::post('/loan-portfolio/soa', [LoanPortfolioController::class, 'generateSOA'])->name('loan-portfolio.soa');
         Route::post('/loan-portfolio/export', [LoanPortfolioController::class, 'export'])->name('loan-portfolio.export');
         
         // Audit Ledger
         Route::get('/audit-ledger', [AuditLedgerController::class, 'index'])->name('audit-ledger.index');
         Route::post('/audit-ledger/export', [AuditLedgerController::class, 'export'])->name('audit-ledger.export');
+        Route::post('/audit-ledger/filter', [AuditLedgerController::class, 'filter'])->name('audit-ledger.filter');
     });
     
     // Promissory Note
@@ -82,17 +106,19 @@ Route::middleware(['auth'])->group(function () {
         // Loan Request API
         Route::post('/loan-requests', [LoanRequestController::class, 'store'])->name('api.loan-requests.store');
         Route::get('/loan-requests', [LoanRequestController::class, 'myRequests'])->name('api.loan-requests.my');
+        Route::post('/loan-requests/{loanRequest}/cancel', [LoanRequestController::class, 'cancel'])->name('api.loan-requests.cancel');
 
         // Attendance API
         Route::get('/attendance/meeting/{meeting}/details', [AttendanceKioskController::class, 'getMeetingDetails'])->name('api.attendance.meeting.details');
     });
 
     // Admin Routes
-    Route::middleware(['can:viewAll,App\Models\LoanRequest'])->prefix('admin')->name('admin.')->group(function () {
+    Route::middleware(['auth', 'can:viewAll,App\Models\LoanRequest'])->prefix('admin')->name('admin.')->group(function () {
         Route::get('/loan-requests', [AdminLoanRequestController::class, 'index'])->name('loan-requests.index');
         
         // Meeting Management Routes
         Route::resource('meetings', MeetingManagementController::class);
+        Route::post('/meetings/{meeting}/publish-draft', [MeetingManagementController::class, 'publishDraft'])->name('meetings.publishDraft');
         Route::post('/meetings/{meeting}/open-attendance', [MeetingManagementController::class, 'openAttendance'])->name('meetings.openAttendance');
         Route::post('/meetings/{meeting}/close-attendance', [MeetingManagementController::class, 'closeAttendance'])->name('meetings.closeAttendance');
         Route::post('/meetings/{meeting}/mark-excused', [MeetingManagementController::class, 'markExcused'])->name('meetings.markExcused');
@@ -100,6 +126,8 @@ Route::middleware(['auth'])->group(function () {
         // Admin API Routes
         Route::prefix('api/loan-requests')->group(function () {
             Route::get('/pending', [AdminLoanRequestController::class, 'getPending'])->name('loan-requests.pending');
+            Route::get('/approved', [AdminLoanRequestController::class, 'getApproved'])->name('loan-requests.approved');
+            Route::get('/rejected', [AdminLoanRequestController::class, 'getRejected'])->name('loan-requests.rejected');
             Route::get('/{loanRequest}', [AdminLoanRequestController::class, 'show'])->name('loan-requests.show');
             Route::post('/{loanRequest}/approve', [AdminLoanRequestController::class, 'approve'])->name('loan-requests.approve');
             Route::post('/{loanRequest}/reject', [AdminLoanRequestController::class, 'reject'])->name('loan-requests.reject');

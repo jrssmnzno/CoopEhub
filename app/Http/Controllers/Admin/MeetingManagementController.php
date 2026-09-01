@@ -36,18 +36,29 @@ class MeetingManagementController extends Controller
     /**
      * Store a newly created meeting
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): RedirectResponse|JsonResponse
     {
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'objective' => ['required', 'string'],
-            'meeting_date' => ['required', 'date_format:Y-m-d\\TH:i'],
+            'meeting_date' => ['required', 'date_format:Y-m-d\\TH:i', 'after_or_equal:now'],
             'location' => ['required', 'string', 'max:255'],
         ]);
 
         $validated['meeting_date'] = \Carbon\Carbon::createFromFormat('Y-m-d\\TH:i', $validated['meeting_date']);
+        $validated['status'] = 'draft';
 
         $meeting = Meeting::create($validated);
+
+        // Return JSON for AJAX requests
+        if ($request->ajax() || $request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Meeting created successfully.',
+                'meeting' => $meeting,
+                'redirect_url' => route('admin.meetings.show', $meeting),
+            ]);
+        }
 
         return redirect()->route('admin.meetings.show', $meeting)->with('success', 'Meeting created successfully.');
     }
@@ -93,7 +104,7 @@ class MeetingManagementController extends Controller
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'objective' => ['required', 'string'],
-            'meeting_date' => ['required', 'date_format:Y-m-d\\TH:i'],
+            'meeting_date' => ['required', 'date_format:Y-m-d\\TH:i', 'after_or_equal:now'],
             'location' => ['required', 'string', 'max:255'],
         ]);
 
@@ -116,6 +127,20 @@ class MeetingManagementController extends Controller
         $meeting->delete();
 
         return redirect()->route('admin.meetings.index')->with('success', 'Meeting deleted successfully.');
+    }
+
+    /**
+     * Publish a draft meeting (change status to scheduled)
+     */
+    public function publishDraft(Meeting $meeting): RedirectResponse
+    {
+        if ($meeting->status !== 'draft') {
+            return back()->withErrors('Only draft meetings can be published.');
+        }
+
+        $meeting->update(['status' => 'scheduled']);
+
+        return back()->with('success', 'Meeting published successfully and is now scheduled.');
     }
 
     /**

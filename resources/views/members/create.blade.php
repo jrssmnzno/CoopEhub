@@ -12,7 +12,7 @@
                     <h5 class="mb-0">New Member Registration</h5>
                 </div>
                 <div class="card-body">
-                    <form action="{{ route('members.store') }}" method="POST">
+                    <form action="{{ route('members.store') }}" method="POST" novalidate id="memberForm">
                         @csrf
 
                         <!-- Personal Information -->
@@ -91,6 +91,31 @@
                                 @enderror
                             </div>
                         </div>
+
+                        <!-- Login Credentials -->
+                        <h6 class="mb-3" style="color: #0d6efd; font-weight: 600;">Login Credentials <span style="font-size: 0.85rem; color: #6c757d;">(Optional)</span></h6>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label no-asterisk-label" style="color: #6c757d;">Password</label>
+                                <input type="password" name="password" class="form-control @error('password') is-invalid @enderror" 
+                                       autocomplete="new-password">
+                                <small class="form-text text-muted">Minimum 8 characters, include uppercase, lowercase, number, and special character. Leave blank if member will create their own account later.</small>
+                                @error('password')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label no-asterisk-label" style="color: #6c757d;">Confirm Password</label>
+                                <input type="password" name="password_confirmation" class="form-control @error('password_confirmation') is-invalid @enderror" 
+                                       autocomplete="new-password">
+                                @error('password_confirmation')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
 
                         <div class="row mb-3">
                             <div class="col-md-6">
@@ -178,4 +203,51 @@
         </div>
     </div>
 </div>
+
+<script>
+document.getElementById('memberForm').addEventListener('submit', function(e) {
+    const passwordField = document.querySelector('input[name="password"]');
+    const confirmPasswordField = document.querySelector('input[name="password_confirmation"]');
+    
+    // Only validate password if one field has content
+    if (passwordField.value.trim() || confirmPasswordField.value.trim()) {
+        // If one is filled, both must be filled and match
+        if (!passwordField.value.trim()) {
+            e.preventDefault();
+            passwordField.focus();
+            alert('Please enter a password');
+            return false;
+        }
+        if (!confirmPasswordField.value.trim()) {
+            e.preventDefault();
+            confirmPasswordField.focus();
+            alert('Please confirm your password');
+            return false;
+        }
+        if (passwordField.value !== confirmPasswordField.value) {
+            e.preventDefault();
+            passwordField.focus();
+            alert('Passwords do not match');
+            return false;
+        }
+    }
+    // If both are empty, form will submit without account creation
+});
+</script>
 @endsection
+
+<style>
+/* Hide asterisks from optional password label fields */
+.no-asterisk-label::after {
+    content: "" !important;
+    display: none !important;
+}
+
+.no-asterisk-label {
+    position: relative;
+}
+
+.no-asterisk-label::after {
+    all: unset;
+}
+</style>

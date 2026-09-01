@@ -59,6 +59,14 @@ class Meeting extends Model
     }
 
     /**
+     * Check if meeting is in draft status
+     */
+    public function isDraft(): bool
+    {
+        return $this->status === 'draft';
+    }
+
+    /**
      * Check if attendance is currently open
      */
     public function isAttendanceOpen(): bool

@@ -20,18 +20,26 @@ class PromissoryNoteController extends Controller
             'id' => $loanData->id,
             'number' => $loanData->loan_number,
             'borrower' => $loanData->member?->full_name ?? 'N/A',
-            'principal' => $loanData->principal,
+            'principal' => $loanData->principal_amount,
             'rate' => $loanData->interest_rate,
             'term' => $loanData->term_months,
             'startDate' => $loanData->created_at->format('Y-m-d'),
-            'monthlyPayment' => $loanData->calculateMonthlyPayment(),
+            'monthlyPayment' => Loan::calculateMonthlyPayment(
+                (float)$loanData->principal_amount,
+                (float)$loanData->interest_rate,
+                (int)$loanData->term_months
+            ),
         ];
 
         // Generate payment schedule
         $schedule = [];
-        $balance = $loanData->principal;
+        $balance = $loanData->principal_amount;
         $monthlyRate = $loanData->interest_rate / 100 / 12;
-        $monthlyPayment = $loanData->calculateMonthlyPayment();
+        $monthlyPayment = Loan::calculateMonthlyPayment(
+            (float)$loanData->principal_amount,
+            (float)$loanData->interest_rate,
+            (int)$loanData->term_months
+        );
 
         for ($month = 1; $month <= $loanData->term_months; $month++) {
             $interest = $balance * $monthlyRate;
@@ -62,11 +70,15 @@ class PromissoryNoteController extends Controller
             'id' => $loanData->id,
             'number' => $loanData->loan_number,
             'borrower' => $loanData->member?->full_name ?? 'N/A',
-            'principal' => $loanData->principal,
+            'principal' => $loanData->principal_amount,
             'rate' => $loanData->interest_rate,
             'term' => $loanData->term_months,
             'startDate' => $loanData->created_at->format('Y-m-d'),
-            'monthlyPayment' => $loanData->calculateMonthlyPayment(),
+            'monthlyPayment' => Loan::calculateMonthlyPayment(
+                (float)$loanData->principal_amount,
+                (float)$loanData->interest_rate,
+                (int)$loanData->term_months
+            ),
         ];
 
         $html = view('promissory-note.template', compact('loan'))->render();
@@ -87,11 +99,15 @@ class PromissoryNoteController extends Controller
             'id' => $loanData->id,
             'number' => $loanData->loan_number,
             'borrower' => $loanData->member?->full_name ?? 'N/A',
-            'principal' => $loanData->principal,
+            'principal' => $loanData->principal_amount,
             'rate' => $loanData->interest_rate,
             'term' => $loanData->term_months,
             'startDate' => $loanData->created_at->format('Y-m-d'),
-            'monthlyPayment' => $loanData->calculateMonthlyPayment(),
+            'monthlyPayment' => Loan::calculateMonthlyPayment(
+                (float)$loanData->principal_amount,
+                (float)$loanData->interest_rate,
+                (int)$loanData->term_months
+            ),
         ];
 
         $html = view('promissory-note.template', compact('loan'))->render();

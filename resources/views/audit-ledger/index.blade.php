@@ -14,11 +14,11 @@
             <div class="row g-3">
                 <div class="col-md-3">
                     <label class="form-label">User/Action</label>
-                    <input type="text" class="form-control" placeholder="Search by user or action...">
+                    <input type="text" class="form-control" id="filterSearch" placeholder="Search by user or action...">
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">Activity Type</label>
-                    <select class="form-select">
+                    <select class="form-select" id="filterActivity">
                         <option value="">All Activities</option>
                         <option value="login">Login</option>
                         <option value="create">Create</option>
@@ -30,10 +30,10 @@
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">Date Range</label>
-                    <input type="date" class="form-control">
+                    <input type="date" class="form-control" id="filterDate">
                 </div>
                 <div class="col-md-3 d-flex align-items-end">
-                    <button class="btn btn-primary w-100">
+                    <button class="btn btn-primary w-100" onclick="filterAudits()">
                         <i class="fas fa-search"></i> Filter
                     </button>
                 </div>
@@ -64,92 +64,44 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {{-- Sample Data - Replace with actual data from controller --}}
+                        @forelse($audits as $audit)
                         <tr>
-                            <td>{{ now()->format('M d, Y H:i:s') }}</td>
-                            <td>Admin User</td>
-                            <td><span class="badge bg-success">Create</span></td>
-                            <td>Receipt Log</td>
-                            <td>#RCP-2024-001</td>
-                            <td>Created new receipt entry</td>
-                            <td>192.168.1.100</td>
+                            <td>{{ $audit->timestamp }}</td>
+                            <td>{{ $audit->user }}</td>
+                            <td>
+                                @php
+                                    $activityLower = strtolower($audit->activity);
+                                    $badgeClass = match($activityLower) {
+                                        'login' => 'bg-success',
+                                        'create' => 'bg-success',
+                                        'update' => 'bg-info',
+                                        'delete' => 'bg-danger',
+                                        'print' => 'bg-warning',
+                                        'export' => 'bg-primary',
+                                        default => 'bg-secondary'
+                                    };
+                                @endphp
+                                <span class="badge {{ $badgeClass }}">{{ $audit->activity }}</span>
+                            </td>
+                            <td>{{ $audit->module }}</td>
+                            <td>{{ $audit->reference }}</td>
+                            <td>{{ $audit->details }}</td>
+                            <td><code style="font-size: 0.8rem;">{{ $audit->ip }}</code></td>
                         </tr>
+                        @empty
                         <tr>
-                            <td>{{ now()->subMinutes(15)->format('M d, Y H:i:s') }}</td>
-                            <td>Officer Juan</td>
-                            <td><span class="badge bg-info">Update</span></td>
-                            <td>Members</td>
-                            <td>MEM-001</td>
-                            <td>Updated member contact information</td>
-                            <td>192.168.1.101</td>
+                            <td colspan="7" class="text-center text-muted py-4">
+                                <i class="fas fa-inbox"></i> No audit logs found
+                            </td>
                         </tr>
-                        <tr>
-                            <td>{{ now()->subHours(1)->format('M d, Y H:i:s') }}</td>
-                            <td>Manager Rosa</td>
-                            <td><span class="badge bg-warning">Print</span></td>
-                            <td>Promissory Note</td>
-                            <td>PN-2024-001</td>
-                            <td>Printed promissory note for member</td>
-                            <td>192.168.1.102</td>
-                        </tr>
-                        <tr>
-                            <td>{{ now()->subHours(2)->format('M d, Y H:i:s') }}</td>
-                            <td>Cashier Mark</td>
-                            <td><span class="badge bg-success">Create</span></td>
-                            <td>Loan Portfolio</td>
-                            <td>LOAN-2024-001</td>
-                            <td>Disbursed loan to member</td>
-                            <td>192.168.1.103</td>
-                        </tr>
-                        <tr>
-                            <td>{{ now()->subHours(3)->format('M d, Y H:i:s') }}</td>
-                            <td>Admin User</td>
-                            <td><span class="badge bg-success">Login</span></td>
-                            <td>System</td>
-                            <td>SESSION-001</td>
-                            <td>User logged in successfully</td>
-                            <td>192.168.1.100</td>
-                        </tr>
-                        <tr>
-                            <td>{{ now()->subHours(4)->format('M d, Y H:i:s') }}</td>
-                            <td>Officer Juan</td>
-                            <td><span class="badge bg-primary">Export</span></td>
-                            <td>Receipt Log</td>
-                            <td>EXPORT-001</td>
-                            <td>Exported receipt log to CSV</td>
-                            <td>192.168.1.101</td>
-                        </tr>
-                        <tr>
-                            <td>{{ now()->subHours(5)->format('M d, Y H:i:s') }}</td>
-                            <td>Manager Rosa</td>
-                            <td><span class="badge bg-info">Update</span></td>
-                            <td>Loan Portfolio</td>
-                            <td>LOAN-2024-002</td>
-                            <td>Updated loan payment terms</td>
-                            <td>192.168.1.102</td>
-                        </tr>
-                        <tr>
-                            <td>{{ now()->subHours(6)->format('M d, Y H:i:s') }}</td>
-                            <td>Cashier Mark</td>
-                            <td><span class="badge bg-success">Create</span></td>
-                            <td>Members</td>
-                            <td>MEM-004</td>
-                            <td>Registered new member</td>
-                            <td>192.168.1.103</td>
-                        </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
 
             <!-- Pagination -->
             <nav aria-label="Page navigation" class="mt-4">
-                <ul class="pagination">
-                    <li class="page-item disabled"><a class="page-link" href="#">Previous</a></li>
-                    <li class="page-item active"><a class="page-link" href="#">1</a></li>
-                    <li class="page-item"><a class="page-link" href="#">2</a></li>
-                    <li class="page-item"><a class="page-link" href="#">3</a></li>
-                    <li class="page-item"><a class="page-link" href="#">Next</a></li>
-                </ul>
+                {{ $audits->links('pagination::bootstrap-5') }}
             </nav>
         </div>
     </div>
@@ -164,19 +116,19 @@
                 <div class="card-body">
                     <div class="row mb-2">
                         <div class="col-6">Logins:</div>
-                        <div class="col-6 text-end"><strong>12</strong></div>
+                        <div class="col-6 text-end"><strong>{{ $statistics['logins'] ?? 0 }}</strong></div>
                     </div>
                     <div class="row mb-2">
                         <div class="col-6">Transactions Created:</div>
-                        <div class="col-6 text-end"><strong>28</strong></div>
+                        <div class="col-6 text-end"><strong>{{ $statistics['creates'] ?? 0 }}</strong></div>
                     </div>
                     <div class="row mb-2">
                         <div class="col-6">Updates:</div>
-                        <div class="col-6 text-end"><strong>15</strong></div>
+                        <div class="col-6 text-end"><strong>{{ $statistics['updates'] ?? 0 }}</strong></div>
                     </div>
                     <div class="row">
                         <div class="col-6">Reports Generated:</div>
-                        <div class="col-6 text-end"><strong>8</strong></div>
+                        <div class="col-6 text-end"><strong>{{ $statistics['reports'] ?? 0 }}</strong></div>
                     </div>
                 </div>
             </div>
@@ -187,41 +139,171 @@
                     <h5 class="mb-0">Most Active Users (Today)</h5>
                 </div>
                 <div class="card-body">
+                    @forelse($mostActiveUsers as $activeUser)
                     <div class="row mb-2 align-items-center">
-                        <div class="col-6">Admin User</div>
+                        <div class="col-6">{{ $activeUser->user }}</div>
                         <div class="col-6 text-end">
+                            @php
+                                $maxCount = $mostActiveUsers->max('count');
+                                $percentage = $maxCount > 0 ? ($activeUser->count / $maxCount) * 100 : 0;
+                                $barColor = match(true) {
+                                    $percentage >= 80 => 'bg-danger',
+                                    $percentage >= 60 => 'bg-warning',
+                                    $percentage >= 40 => 'bg-info',
+                                    default => 'bg-success'
+                                };
+                            @endphp
                             <div class="progress" style="height: 20px;">
-                                <div class="progress-bar" style="width: 100%">12</div>
+                                <div class="progress-bar {{ $barColor }}" style="width: {{ $percentage }}%">{{ $activeUser->count }}</div>
                             </div>
                         </div>
                     </div>
-                    <div class="row mb-2 align-items-center">
-                        <div class="col-6">Officer Juan</div>
-                        <div class="col-6 text-end">
-                            <div class="progress" style="height: 20px;">
-                                <div class="progress-bar bg-success" style="width: 75%">9</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row mb-2 align-items-center">
-                        <div class="col-6">Manager Rosa</div>
-                        <div class="col-6 text-end">
-                            <div class="progress" style="height: 20px;">
-                                <div class="progress-bar bg-info" style="width: 60%">7</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row align-items-center">
-                        <div class="col-6">Cashier Mark</div>
-                        <div class="col-6 text-end">
-                            <div class="progress" style="height: 20px;">
-                                <div class="progress-bar bg-warning" style="width: 50%">6</div>
-                            </div>
-                        </div>
-                    </div>
+                    @empty
+                    <p class="text-muted text-center py-3">No user activity data available</p>
+                    @endforelse
                 </div>
             </div>
         </div>
     </div>
 </div>
+@endsection
+
+@section('scripts')
+<script>
+function filterAudits() {
+    const search = document.getElementById('filterSearch').value;
+    const activity = document.getElementById('filterActivity').value;
+    const date = document.getElementById('filterDate').value;
+
+    const formData = new FormData();
+    if (search) formData.append('search', search);
+    if (activity) formData.append('activity', activity);
+    if (date) formData.append('date', date);
+
+    fetch('{{ route("audit-ledger.filter") }}', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'Accept': 'application/json',
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        updateAuditTable(data.audits);
+        updatePagination(data.pagination);
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error filtering audit logs');
+    });
+}
+
+function updateAuditTable(audits) {
+    const tbody = document.querySelector('#auditTable tbody');
+    
+    if (audits.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4"><i class="fas fa-inbox"></i> No audit logs found</td></tr>';
+        return;
+    }
+
+    const badgeClass = (activity) => {
+        const activityLower = activity.toLowerCase();
+        return {
+            'login': 'bg-success',
+            'create': 'bg-success',
+            'update': 'bg-info',
+            'delete': 'bg-danger',
+            'print': 'bg-warning',
+            'export': 'bg-primary',
+        }[activityLower] || 'bg-secondary';
+    };
+
+    tbody.innerHTML = audits.map(audit => `
+        <tr>
+            <td>${formatDateTime(audit.timestamp)}</td>
+            <td>${audit.user}</td>
+            <td>
+                <span class="badge ${badgeClass(audit.activity)}">${audit.activity}</span>
+            </td>
+            <td>${audit.module}</td>
+            <td>${audit.reference || '-'}</td>
+            <td>${audit.details || '-'}</td>
+            <td><code style="font-size: 0.8rem;">${audit.ip}</code></td>
+        </tr>
+    `).join('');
+}
+
+function updatePagination(pagination) {
+    const nav = document.querySelector('nav[aria-label="Page navigation"]');
+    
+    if (!nav) return;
+
+    let paginationHTML = '<ul class="pagination justify-content-center">';
+    
+    // Previous button
+    if (pagination.current_page > 1) {
+        paginationHTML += `<li class="page-item"><a class="page-link" href="#" onclick="goToPage(${pagination.current_page - 1})">Previous</a></li>`;
+    } else {
+        paginationHTML += '<li class="page-item disabled"><span class="page-link">Previous</span></li>';
+    }
+
+    // Page numbers
+    for (let i = 1; i <= pagination.last_page; i++) {
+        if (i === pagination.current_page) {
+            paginationHTML += `<li class="page-item active"><span class="page-link">${i}</span></li>`;
+        } else {
+            paginationHTML += `<li class="page-item"><a class="page-link" href="#" onclick="goToPage(${i})">${i}</a></li>`;
+        }
+    }
+
+    // Next button
+    if (pagination.current_page < pagination.last_page) {
+        paginationHTML += `<li class="page-item"><a class="page-link" href="#" onclick="goToPage(${pagination.current_page + 1})">Next</a></li>`;
+    } else {
+        paginationHTML += '<li class="page-item disabled"><span class="page-link">Next</span></li>';
+    }
+
+    paginationHTML += '</ul>';
+    nav.innerHTML = paginationHTML;
+}
+
+function goToPage(page) {
+    event.preventDefault();
+    const search = document.getElementById('filterSearch').value;
+    const activity = document.getElementById('filterActivity').value;
+    const date = document.getElementById('filterDate').value;
+
+    const formData = new FormData();
+    if (search) formData.append('search', search);
+    if (activity) formData.append('activity', activity);
+    if (date) formData.append('date', date);
+    formData.append('page', page);
+
+    fetch('{{ route("audit-ledger.filter") }}', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'Accept': 'application/json',
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        updateAuditTable(data.audits);
+        updatePagination(data.pagination);
+        window.scrollTo(0, 0);
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error loading page');
+    });
+}
+
+function formatDateTime(timestamp) {
+    // Timestamp is already formatted by the server in Manila timezone
+    // Just return it as-is
+    return timestamp;
+}
+</script>
 @endsection

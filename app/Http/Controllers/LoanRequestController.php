@@ -121,4 +121,54 @@ class LoanRequestController extends Controller
             'count' => $requests->count(),
         ]);
     }
+
+    /**
+     * Cancel a pending loan request
+     */
+    public function cancel(LoanRequest $loanRequest): JsonResponse
+    {
+        $user = Auth::user();
+
+        // Check if user is authorized to cancel this request
+        if (!$user->can('cancel', $loanRequest)) {
+            return response()->json(['error' => 'Unauthorized. You can only cancel your own pending requests.'], 403);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Update the status to cancelled
+            $oldStatus = $loanRequest->status;
+            $loanRequest->update([
+                'status' => 'cancelled'
+            ]);
+
+            // Log the cancellation
+            \App\Models\AuditLog::log(
+                $user,
+                'update',
+                'Loans',
+                'LoanRequest',
+                $loanRequest->id,
+                'success',
+                ['status' => $oldStatus],
+                ['status' => 'cancelled'],
+                'Member cancelled loan request'
+            );
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Loan request cancelled successfully',
+                'loan_request' => [
+                    'id' => $loanRequest->id,
+                    'status' => $loanRequest->status,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to cancel loan request: ' . $e->getMessage()], 500);
+        }
+    }
 }

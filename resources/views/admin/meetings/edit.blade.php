@@ -76,6 +76,9 @@
                                 <small class="form-text text-muted" style="display: block; margin-top: 0.5rem;">
                                     <i class="fas fa-clock"></i> Selected time: <span id="datePreview" style="font-weight: 500; color: #00a86b;">{{ $meeting->meeting_date->setTimezone('Asia/Manila')->format('l, F j, Y \\a\\t g:i A') }}</span>
                                 </small>
+                                <small class="form-text text-danger" id="dateError" style="display: none; margin-top: 0.5rem;">
+                                    <i class="fas fa-exclamation-circle"></i> <span id="dateErrorText"></span>
+                                </small>
                                 @error('meeting_date')
                                     <span class="invalid-feedback">{{ $message }}</span>
                                 @enderror
@@ -117,16 +120,61 @@
     // Display selected date in natural language format
     const dateInput = document.getElementById('meeting_date');
     const datePreview = document.getElementById('datePreview');
+    const dateError = document.getElementById('dateError');
+    const dateErrorText = document.getElementById('dateErrorText');
+    const submitBtn = document.querySelector('button[type="submit"]');
+    
+    function setMinDate() {
+        // Get the current date and time in Philippines timezone
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        
+        const minDateTime = `${year}-${month}-${day}T${hours}:${minutes}`;
+        dateInput.min = minDateTime;
+    }
     
     function updateDatePreview() {
         if (dateInput.value) {
             const date = new Date(dateInput.value + ':00'); // Add seconds for proper parsing
             const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Manila' };
             const formatted = date.toLocaleDateString('en-US', options);
-            datePreview.textContent = formatted;
+            
+            // Check if the date is in the past
+            const now = new Date();
+            const selectedDate = new Date(dateInput.value);
+            
+            if (selectedDate <= now) {
+                dateError.style.display = 'block';
+                dateErrorText.textContent = 'Please select a future date and time. Past dates cannot be selected.';
+                datePreview.textContent = formatted;
+                submitBtn.disabled = true;
+                dateInput.classList.add('is-invalid');
+            } else {
+                dateError.style.display = 'none';
+                datePreview.textContent = formatted;
+                submitBtn.disabled = false;
+                dateInput.classList.remove('is-invalid');
+            }
+        } else {
+            datePreview.textContent = 'Not selected';
+            dateError.style.display = 'none';
+            submitBtn.disabled = false;
         }
     }
     
     dateInput.addEventListener('change', updateDatePreview);
     dateInput.addEventListener('input', updateDatePreview);
+    
+    // Set minimum date on page load
+    window.addEventListener('load', function() {
+        setMinDate();
+        updateDatePreview();
+    });
+    
+    // Update min date periodically (every minute)
+    setInterval(setMinDate, 60000);
 </script>@endsection

@@ -8,9 +8,9 @@
     <div class="container" style="max-width: 600px;">
         <!-- Meeting Information Card -->
         <div class="card" style="border: none; border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); margin-bottom: 2rem; overflow: hidden;">
-            <div style="background: linear-gradient(135deg, #00a86b 0%, #008b5e 100%); color: white; padding: 2rem;">
-                <h2 style="margin: 0; font-weight: 700; font-size: 1.8rem;" id="meetingTitle">{{ $meeting->title }}</h2>
-                <p style="margin: 0.5rem 0 0; opacity: 0.9; font-size: 1.1rem;">{{ $meeting->meeting_date->setTimezone('Asia/Manila')->format('F d, Y • h:i A') }}</p>
+            <div style="background: linear-gradient(135deg, #1f439f 0%, #021c68 100%); color: white; padding: 2rem;">
+                <h2 style="margin: 0; font-weight: 700; font-size: 1.8rem; color: white;" id="meetingTitle">{{ $meeting->title }}</h2>
+                <p style="margin: 0.5rem 0 0; opacity: 0.9; font-size: 1.1rem; color: white;">{{ $meeting->meeting_date->setTimezone('Asia/Manila')->format('F d, Y • h:i A') }}</p>
             </div>
             <div class="card-body">
                 <div style="margin-bottom: 1.5rem;">

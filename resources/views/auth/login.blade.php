@@ -63,6 +63,12 @@
             font-size: 2rem;
         }
 
+        .logo-img-navbar {
+            height:40px !important;
+            width: auto !important;
+            object-fit: contain;
+        }
+
         .login-tabs {
             display: flex;
             gap: 1rem;
@@ -340,7 +346,7 @@
     <nav class="login-navbar">
         <div class="navbar-container">
             <div class="login-logo">
-                <i class="fas fa-seedling"></i>
+                <img src="{{ asset('images/logo.png') }}" alt="COOP Ehub Logo" class="logo-img-navbar">
                 <span>COOP Ehub</span>
             </div>
             <div class="login-tabs">
@@ -484,7 +490,6 @@
                             <input type="checkbox" name="remember" id="admin-remember">
                             Remember me
                         </label>
-                        <a href="#">Forgot password?</a>
                     </div>
 
                     <button type="submit" class="login-btn">
@@ -578,7 +583,6 @@
                             <input type="checkbox" name="remember" id="member-remember">
                             Remember me
                         </label>
-                        <a href="#">Forgot password?</a>
                     </div>
 
                     <button type="submit" class="login-btn">

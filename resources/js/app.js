@@ -1,5 +1,6 @@
 import './bootstrap';
-import 'bootstrap/dist/js/bootstrap.bundle.min.js';
+import * as bootstrap from 'bootstrap';
+window.bootstrap = bootstrap;
 
 // Loan Summary Calculator Component
 class LoanCalculator {
@@ -86,8 +87,64 @@ class TableFilter {
     }
 }
 
+// Page Animation Manager
+class PageAnimations {
+    constructor() {
+        this.init();
+    }
+
+    init() {
+        // Animate all cards on page load
+        this.animateCards();
+        
+        // Animate summary cards with stagger
+        this.animateSummaryCards();
+        
+        // Observe new elements for animation
+        this.setupMutationObserver();
+    }
+
+    animateCards() {
+        const cards = document.querySelectorAll('.card');
+        cards.forEach((card, index) => {
+            card.style.animation = `fadeInUp 0.6s ease-out ${index * 0.1}s forwards`;
+        });
+    }
+
+    animateSummaryCards() {
+        const summaryCards = document.querySelectorAll('.summary-card');
+        summaryCards.forEach((card, index) => {
+            card.style.animation = `fadeInUp 0.6s ease-out ${index * 0.15}s forwards`;
+        });
+    }
+
+    setupMutationObserver() {
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'childList') {
+                    mutation.addedNodes.forEach((node) => {
+                        if (node.nodeType === 1) {
+                            if (node.classList && node.classList.contains('card')) {
+                                node.style.animation = 'fadeInUp 0.6s ease-out forwards';
+                            }
+                        }
+                    });
+                }
+            });
+        });
+
+        observer.observe(document.querySelector('.main-content') || document.body, {
+            childList: true,
+            subtree: true
+        });
+    }
+}
+
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
+    // Initialize page animations
+    new PageAnimations();
+    
     // Initialize loan calculator
     new LoanCalculator();
 

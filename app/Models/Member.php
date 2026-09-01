@@ -20,6 +20,10 @@ class Member extends Model
         'date_of_birth',
         'joined_date',
         'status',
+        'relationship_status',
+        'employment_status',
+        'member_type',
+        'monthly_income',
         'capital_share',
         'total_loans',
         'outstanding_balance',
@@ -34,6 +38,7 @@ class Member extends Model
         'capital_share' => 'decimal:2',
         'total_loans' => 'decimal:2',
         'outstanding_balance' => 'decimal:2',
+        'monthly_income' => 'decimal:2',
     ];
 
     /**
@@ -95,12 +100,16 @@ class Member extends Model
     /**
      * Calculate total outstanding balance
      */
-    public function calculateOutstandingBalance(): void
+    public function calculateOutstandingBalance()
     {
-        $this->outstanding_balance = $this->loans()
+        $balance = $this->loans()
             ->whereIn('status', ['active', 'overdue'])
             ->sum('running_balance');
+        
+        $this->outstanding_balance = $balance;
         $this->save();
+        
+        return $balance;
     }
 
     /**

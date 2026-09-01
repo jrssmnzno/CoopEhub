@@ -12,26 +12,58 @@ class ReceiptLogController extends Controller
     /**
      * Display the receipt log.
      */
-    public function index(): View
+    public function index(Request $request): View
     {
-        $receipts = Transaction::with('member', 'loan')
-            ->latest()
-            ->paginate(20)
-            ->map(function ($trans) {
-                return (object)[
-                    'id' => $trans->id,
-                    'number' => 'RCP-' . str_pad($trans->id, 5, '0', STR_PAD_LEFT),
-                    'member' => $trans->member?->full_name ?? 'N/A',
-                    'type' => str_replace('_', ' ', ucfirst($trans->type)),
-                    'amount' => $trans->total_amount,
-                    'date' => $trans->created_at->format('Y-m-d'),
-                    'reference' => $trans->loan?->loan_number ?? $trans->reference_number ?? 'N/A',
-                    'status' => 'completed',
-                    'created_at' => $trans->created_at,
-                ];
-            });
+        $query = Transaction::with('member', 'loan');
 
-        return view('receipt-log.index', compact('receipts'));
+        // Filter by search term (member name, amount, or date)
+        if ($request->has('search') && $request->input('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('member', function ($memberQuery) use ($search) {
+                    $memberQuery->where('first_name', 'like', "%{$search}%")
+                               ->orWhere('last_name', 'like', "%{$search}%");
+                })
+                ->orWhere('total_amount', 'like', "%{$search}%")
+                ->orWhere('created_at', 'like', "%{$search}%")
+                ->orWhere('reference_number', 'like', "%{$search}%");
+            });
+        }
+
+        // Filter by transaction type
+        if ($request->has('type') && $request->input('type')) {
+            $type = $request->input('type');
+            $query->where('type', $type);
+        }
+
+        // Filter by date range
+        if ($request->has('date_from') && $request->input('date_from')) {
+            $dateFrom = $request->input('date_from');
+            $query->whereDate('created_at', '>=', $dateFrom);
+        }
+
+        if ($request->has('date_to') && $request->input('date_to')) {
+            $dateTo = $request->input('date_to');
+            $query->whereDate('created_at', '<=', $dateTo);
+        }
+
+        $transactionsPaginated = $query->latest()->paginate(15);
+
+        $receipts = $transactionsPaginated->map(function ($trans) {
+            return (object)[
+                'id' => $trans->id,
+                'number' => 'RCP-' . str_pad($trans->id, 5, '0', STR_PAD_LEFT),
+                'member' => $trans->member?->full_name ?? 'N/A',
+                'type' => str_replace('_', ' ', ucfirst($trans->type)),
+                'amount' => $trans->total_amount,
+                'date' => $trans->created_at->format('Y-m-d'),
+                'reference' => $trans->loan?->loan_number ?? $trans->reference_number ?? 'N/A',
+                'status' => 'completed',
+                'created_at' => $trans->created_at,
+            ];
+        });
+
+        return view('receipt-log.index', compact('receipts', 'transactionsPaginated'));
     }
 
     /**

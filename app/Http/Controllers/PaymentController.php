@@ -19,7 +19,8 @@ class PaymentController extends Controller
     {
         $validated = $request->validate([
             'amount' => ['required', 'numeric', 'min:0.01'],
-            'payment_method' => ['required', 'in:cash,check,bank_transfer'],
+            'payment_date' => ['required', 'date', 'date_format:Y-m-d', 'before_or_equal:today'],
+            'payment_method' => ['nullable', 'in:cash,check,bank_transfer'],
             'reference_number' => ['nullable', 'string'],
             'notes' => ['nullable', 'string'],
         ]);
@@ -44,10 +45,16 @@ class PaymentController extends Controller
                 $loan->update([
                     'next_payment_date' => now()->addMonth(),
                 ]);
+            } else {
+                // Clear next payment date for fully paid loans
+                $loan->update([
+                    'next_payment_date' => null,
+                ]);
             }
 
-            // Update loan status
+            // Update loan status based on current running balance
             $loan->updateStatus();
+            $loan->refresh();
 
             // Update member balance
             $member->calculateOutstandingBalance();
@@ -67,8 +74,8 @@ class PaymentController extends Controller
                 'total_amount' => $paymentAmount,
                 'member_balance_after' => $member->outstanding_balance,
                 'loan_balance_after' => $loan->running_balance,
-                'processed_at' => now(),
-                'payment_method' => $validated['payment_method'],
+                'processed_at' => now()->setTimeFromTimeString($validated['payment_date'] . ' ' . now()->format('H:i:s')),
+                'payment_method' => $validated['payment_method'] ?? 'cash',
                 'ip_address' => request()->ip(),
             ]);
 
@@ -102,6 +109,12 @@ class PaymentController extends Controller
                     'interest' => $breakdown['interest'],
                     'remaining' => $breakdown['remaining'],
                     'loan_balance' => $loan->running_balance,
+                ],
+                'loan' => [
+                    'id' => $loan->id,
+                    'status' => $loan->status,
+                    'running_balance' => $loan->running_balance,
+                    'next_payment_date' => $loan->next_payment_date,
                 ],
             ]);
 

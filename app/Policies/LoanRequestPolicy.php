@@ -45,4 +45,18 @@ class LoanRequestPolicy
     {
         return $user->isAdmin();
     }
+
+    /**
+     * Determine if the user can cancel a loan request.
+     * Only members can cancel their own pending requests.
+     */
+    public function cancel(User $user, LoanRequest $loanRequest): bool
+    {
+        // Member can only cancel their own pending requests
+        if ($user->isMember()) {
+            return $user->member?->id === $loanRequest->member_id && $loanRequest->status === 'pending';
+        }
+
+        return false;
+    }
 }

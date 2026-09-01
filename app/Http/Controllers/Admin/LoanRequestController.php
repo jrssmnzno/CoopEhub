@@ -38,10 +38,15 @@ class LoanRequestController extends Controller
     }
 
     /**
-     * Get pending loan requests as JSON
+     * Get pending loan requests as JSON with statistics
      */
     public function getPending(): JsonResponse
     {
+        // Get counts for statistics
+        $pendingCount = LoanRequest::where('status', 'pending')->count();
+        $approvedCount = LoanRequest::where('status', 'approved')->whereYear('approved_at', now()->year)->whereMonth('approved_at', now()->month)->count();
+        $rejectedCount = LoanRequest::where('status', 'rejected')->whereYear('approved_at', now()->year)->whereMonth('approved_at', now()->month)->count();
+        
         $requests = LoanRequest::where('status', 'pending')
             ->with('member')
             ->latest('created_at')
@@ -50,17 +55,78 @@ class LoanRequestController extends Controller
                 'id' => $r->id,
                 'member_id' => $r->member->member_id,
                 'member_name' => $r->member->full_name,
-                'amount' => '$' . number_format($r->requested_amount, 2),
+                'loan_type' => $r->loan_type,
+                'amount' => '₱' . number_format($r->requested_amount, 2),
                 'term' => $r->requested_term_months . ' months',
-                'monthly_payment' => '$' . number_format($r->monthly_payment, 2),
-                'total_interest' => '$' . number_format($r->calculateTotalInterest(), 2),
+                'monthly_payment' => '₱' . number_format($r->monthly_payment, 2),
+                'total_interest' => '₱' . number_format($r->calculateTotalInterest(), 2),
                 'created_at' => $r->created_at->format('M d, Y'),
                 'actions' => ['approve', 'reject'],
-            ]);
+            ])
+            ->values()
+            ->all();
 
         return response()->json([
             'requests' => $requests,
-            'count' => $requests->count(),
+            'count' => count($requests),
+            'statistics' => [
+                'pending' => $pendingCount,
+                'approved' => $approvedCount,
+                'rejected' => $rejectedCount,
+            ]
+        ]);
+    }
+    
+    /**
+     * Get approved loan requests as JSON
+     */
+    public function getApproved(): JsonResponse
+    {
+        $requests = LoanRequest::where('status', 'approved')
+            ->with('member')
+            ->latest('approved_at')
+            ->limit(10)
+            ->get()
+            ->map(fn($r) => [
+                'id' => $r->id,
+                'member_id' => $r->member->member_id,
+                'member_name' => $r->member->full_name,
+                'loan_type' => $r->loan_type,
+                'amount' => '₱' . number_format($r->requested_amount, 2),
+                'approved_at' => $r->approved_at?->format('M d, Y H:i') ?? 'N/A',
+            ])
+            ->all();
+
+        return response()->json([
+            'requests' => $requests,
+            'approved_count' => count($requests),
+        ]);
+    }
+    
+    /**
+     * Get rejected loan requests as JSON
+     */
+    public function getRejected(): JsonResponse
+    {
+        $requests = LoanRequest::where('status', 'rejected')
+            ->with('member')
+            ->latest('updated_at')
+            ->limit(10)
+            ->get()
+            ->map(fn($r) => [
+                'id' => $r->id,
+                'member_id' => $r->member->member_id,
+                'member_name' => $r->member->full_name,
+                'loan_type' => $r->loan_type,
+                'amount' => '₱' . number_format($r->requested_amount, 2),
+                'reason' => $r->notes ?? 'Not specified',
+                'rejected_at' => $r->updated_at?->format('M d, Y H:i') ?? 'N/A',
+            ])
+            ->all();
+
+        return response()->json([
+            'requests' => $requests,
+            'rejected_count' => count($requests),
         ]);
     }
 
@@ -155,13 +221,14 @@ class LoanRequestController extends Controller
             'request' => [
                 'id' => $loanRequest->id,
                 'status' => $loanRequest->status,
+                'loan_type' => $loanRequest->loan_type,
                 'created_at' => $loanRequest->created_at->format('M d, Y'),
-                'requested_amount' => '$' . number_format($loanRequest->requested_amount, 2),
+                'requested_amount' => '₱' . number_format($loanRequest->requested_amount, 2),
                 'requested_term' => $loanRequest->requested_term_months . ' months',
                 'interest_rate' => $loanRequest->interest_rate . '%',
-                'monthly_payment' => '$' . number_format($loanRequest->monthly_payment, 2),
-                'total_interest' => '$' . number_format($loanRequest->calculateTotalInterest(), 2),
-                'total_amount' => '$' . number_format($loanRequest->requested_amount + $loanRequest->calculateTotalInterest(), 2),
+                'monthly_payment' => '₱' . number_format($loanRequest->monthly_payment, 2),
+                'total_interest' => '₱' . number_format($loanRequest->calculateTotalInterest(), 2),
+                'total_amount' => '₱' . number_format($loanRequest->requested_amount + $loanRequest->calculateTotalInterest(), 2),
                 'admin_notes' => $loanRequest->admin_notes,
                 'approved_by' => $loanRequest->approvedBy?->name,
                 'approved_at' => $loanRequest->approved_at?->format('M d, Y'),
@@ -174,7 +241,7 @@ class LoanRequestController extends Controller
                 'phone' => $member->phone,
                 'address' => $member->address,
                 'status' => $member->status,
-                'outstanding_balance' => '$' . number_format($member->calculateOutstandingBalance(), 2),
+                'outstanding_balance' => '₱' . number_format($member->calculateOutstandingBalance(), 2),
                 'total_loans' => $member->total_loans,
             ]
         ]);

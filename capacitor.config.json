@@ -1,0 +1,9 @@
+{
+  "appId": "com.coopehub.app",
+  "appName": "CoopEhub",
+  "webDir": "dist",
+  "server": {
+    "url": "https://coopehub.sousounofreiren.io",
+    "cleartext": false
+  }
+}

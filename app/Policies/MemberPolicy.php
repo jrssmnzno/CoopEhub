@@ -42,4 +42,23 @@ class MemberPolicy
     {
         return $user->isAdmin();
     }
+
+    /**
+     * Determine if the user can create an account for a member (admin only).
+     */
+    public function createAccount(User $user, Member $member): bool
+    {
+        // Only admins can create accounts
+        // Member should not have a user account already
+        return $user->isAdmin() && !$member->user_id;
+    }
+
+    /**
+     * Determine if the user can delete a member (admin only).
+     */
+    public function delete(User $user, Member $member): bool
+    {
+        // Only admins can delete members
+        return $user->isAdmin();
+    }
 }

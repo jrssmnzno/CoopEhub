@@ -18,11 +18,11 @@
                     </p>
                 </div>
                 <div class="col-md-4 text-end">
-                    @if($upcomingMeeting->status === 'ongoing')
+                    @if($upcomingMeeting->status === 'ongoing' && Auth::user()->isAdmin())
                         <a href="{{ route('attendance.kiosk.show', $upcomingMeeting) }}" class="btn btn-success" style="border-radius: 8px; padding: 0.75rem 1.5rem;">
                             <i class="fas fa-sign-in-alt"></i> Check In Now
                         </a>
-                    @else
+                    @elseif($upcomingMeeting->status !== 'ongoing')
                         <span style="background: #ffc107; color: white; padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.85rem; font-weight: 500;">
                             {{ ucfirst($upcomingMeeting->status) }}
                         </span>

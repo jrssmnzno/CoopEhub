@@ -37,9 +37,10 @@ class DashboardController extends Controller
 
         $recentTransactions = \App\Models\Transaction::latest('created_at')->limit(10)->get();
         $pendingLoans = \App\Models\LoanRequest::where('status', 'pending')->count();
+        $loanRequestsList = \App\Models\LoanRequest::where('status', 'pending')->with('member')->latest('created_at')->limit(5)->get();
         $totalMembers = \App\Models\Member::count();
 
-        return view('dashboard.admin', compact('stats', 'recentTransactions', 'pendingLoans', 'totalMembers'));
+        return view('dashboard.admin', compact('stats', 'recentTransactions', 'pendingLoans', 'loanRequestsList', 'totalMembers'));
     }
 
     /**

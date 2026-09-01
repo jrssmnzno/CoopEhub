@@ -50,7 +50,7 @@ class LoanPortfolioController extends Controller
                     'description' => str_replace('_', ' ', ucfirst($trans->type)),
                     'principal' => $trans->principal_amount ?? 0,
                     'interest' => $trans->interest_amount ?? 0,
-                    'balance' => $trans->running_balance ?? $trans->created_at->format('Y-m-d'),
+                    'balance' => $trans->loan_balance_after ?? 0,
                     'reference' => $trans->reference_number ?? 'N/A',
                 ];
             });
@@ -59,14 +59,27 @@ class LoanPortfolioController extends Controller
             ->where('status', 'active')
             ->get()
             ->map(function ($loan) {
+                $monthlyPayment = Loan::calculateMonthlyPayment(
+                    $loan->principal_amount,
+                    $loan->interest_rate,
+                    $loan->term_months
+                );
+                
                 return (object)[
                     'id' => $loan->id,
                     'number' => $loan->loan_number,
-                    'principal' => $loan->principal,
+                    'principal' => $loan->principal_amount,
+                    'principal_amount' => $loan->principal_amount,
+                    'interest_rate' => $loan->interest_rate,
                     'rate' => $loan->interest_rate,
                     'term' => $loan->term_months,
+                    'term_months' => $loan->term_months,
                     'balance' => $loan->running_balance,
-                    'payment' => $loan->calculateMonthlyPayment(),
+                    'running_balance' => $loan->running_balance,
+                    'payment' => $monthlyPayment,
+                    'monthly_payment' => $monthlyPayment,
+                    'next_payment_date' => $loan->next_payment_date,
+                    'status' => $loan->status,
                 ];
             });
 

@@ -11,32 +11,38 @@
             <h5 class="mb-0">Filters</h5>
         </div>
         <div class="card-body">
-            <div class="row g-3">
+            <form method="GET" action="{{ route('receipt-log.index') }}" class="row g-3">
                 <div class="col-md-4">
                     <label class="form-label">Search & Filter</label>
-                    <input type="text" id="receiptFilter" class="form-control" 
-                           placeholder="Search by member, amount, or date...">
+                    <input type="text" name="search" id="receiptFilter" class="form-control" 
+                           placeholder="Search by member, amount, or date..."
+                           value="{{ request('search') }}">
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">Transaction Type</label>
-                    <select class="form-select">
+                    <select name="type" class="form-select">
                         <option value="">All Types</option>
-                        <option value="payment">Payment</option>
-                        <option value="disbursement">Loan Disbursement</option>
-                        <option value="penalty">Penalty</option>
-                        <option value="refund">Refund</option>
+                        <option value="payment" {{ request('type') === 'payment' ? 'selected' : '' }}>Payment</option>
+                        <option value="loan_disbursement" {{ request('type') === 'loan_disbursement' ? 'selected' : '' }}>Loan Disbursement</option>
+                        <option value="penalty" {{ request('type') === 'penalty' ? 'selected' : '' }}>Penalty</option>
+                        <option value="refund" {{ request('type') === 'refund' ? 'selected' : '' }}>Refund</option>
+                        <option value="interest_payment" {{ request('type') === 'interest_payment' ? 'selected' : '' }}>Interest Payment</option>
                     </select>
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label">Date Range</label>
-                    <input type="date" class="form-control">
+                <div class="col-md-2">
+                    <label class="form-label">From Date</label>
+                    <input type="date" name="date_from" class="form-control" value="{{ request('date_from') }}">
                 </div>
-                <div class="col-md-2 d-flex align-items-end">
-                    <button class="btn btn-primary w-100">
+                <div class="col-md-2">
+                    <label class="form-label">To Date</label>
+                    <input type="date" name="date_to" class="form-control" value="{{ request('date_to') }}">
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
                         <i class="fas fa-search"></i> Search
                     </button>
                 </div>
-            </div>
+            </form>
         </div>
     </div>
 
@@ -92,13 +98,7 @@
 
             <!-- Pagination -->
             <nav aria-label="Page navigation" class="mt-4">
-                <ul class="pagination">
-                    <li class="page-item disabled"><a class="page-link" href="#">Previous</a></li>
-                    <li class="page-item active"><a class="page-link" href="#">1</a></li>
-                    <li class="page-item"><a class="page-link" href="#">2</a></li>
-                    <li class="page-item"><a class="page-link" href="#">3</a></li>
-                    <li class="page-item"><a class="page-link" href="#">Next</a></li>
-                </ul>
+                {{ $transactionsPaginated->links() }}
             </nav>
         </div>
     </div>

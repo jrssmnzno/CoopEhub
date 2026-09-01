@@ -6,11 +6,11 @@
 @section('content')
 <div class="container-fluid">
     <!-- Meeting Header -->
-    <div style="background: linear-gradient(135deg, #00a86b 0%, #008b5e 100%); color: white; padding: 2rem; border-radius: 10px; margin-bottom: 2rem; box-shadow: 0 4px 15px rgba(0,168,107,0.2);">
+    <div style="background: linear-gradient(135deg, #276da9 0%, #2c4cb3 100%); color: white; padding: 2rem; border-radius: 10px; margin-bottom: 2rem; box-shadow: 0 4px 15px rgba(0,168,107,0.2);">
         <div class="row align-items-center">
             <div class="col-md-8">
-                <h1 style="margin: 0; font-weight: 700;">{{ $meeting->title }}</h1>
-                <p style="margin: 0.5rem 0 0; opacity: 0.9;">{{ $meeting->meeting_date->setTimezone('Asia/Manila')->format('F d, Y • h:i A') }}</p>
+                <h1 style="margin: 0; font-weight: 700; color: white !important; -webkit-text-fill-color: white !important; background: none !important;">{{ $meeting->title }}</h1>
+                <p style="margin: 0.5rem 0 0; opacity: 0.9; color: white !important;">{{ $meeting->meeting_date->setTimezone('Asia/Manila')->format('F d, Y • h:i A') }}</p>
             </div>
             <div class="col-md-4 text-end">
                 <span style="background: rgba(255,255,255,0.3); padding: 0.5rem 1rem; border-radius: 20px; font-weight: 500;">
@@ -23,7 +23,24 @@
     <!-- Action Buttons -->
     <div class="row mb-3">
         <div class="col-12">
-            @if($meeting->status === 'scheduled')
+            @if($meeting->status === 'draft')
+                <form action="{{ route('admin.meetings.publishDraft', $meeting) }}" method="POST" style="display: inline;">
+                    @csrf
+                    <button type="submit" class="btn btn-success" onclick="return confirm('Publish this meeting to schedule it?')">
+                        <i class="fas fa-check-circle"></i> Publish Meeting
+                    </button>
+                </form>
+                <a href="{{ route('admin.meetings.edit', $meeting) }}" class="btn btn-primary">
+                    <i class="fas fa-pencil-alt"></i> Continue Editing
+                </a>
+                <form action="{{ route('admin.meetings.destroy', $meeting) }}" method="POST" style="display: inline;">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-danger" onclick="return confirm('Delete this draft meeting?')">
+                        <i class="fas fa-trash"></i> Delete Draft
+                    </button>
+                </form>
+            @elseif($meeting->status === 'scheduled')
                 <form action="{{ route('admin.meetings.openAttendance', $meeting) }}" method="POST" style="display: inline;">
                     @csrf
                     <button type="submit" class="btn btn-success" onclick="return confirm('Open attendance for this meeting?')">
@@ -74,7 +91,7 @@
                     <div class="mb-3">
                         <h6 style="color: #666; margin-bottom: 0.5rem;">Status</h6>
                         <p style="margin: 0;">
-                            <span style="background: {{ $meeting->status === 'scheduled' ? '#ffc107' : ($meeting->status === 'ongoing' ? '#00a86b' : '#6c757d') }}; color: white; padding: 0.25rem 0.75rem; border-radius: 15px; font-size: 0.85rem; font-weight: 500;">
+                            <span style="background: {{ $meeting->status === 'draft' ? '#ffc107' : ($meeting->status === 'scheduled' ? '#0d6efd' : ($meeting->status === 'ongoing' ? '#00a86b' : '#6c757d')) }}; color: white; padding: 0.25rem 0.75rem; border-radius: 15px; font-size: 0.85rem; font-weight: 500;">
                                 {{ ucfirst($meeting->status) }}
                             </span>
                         </p>
@@ -135,53 +152,76 @@
     <div class="row">
         <div class="col-12">
             <div class="card" style="border: none; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                <div class="card-header" style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
-                    <h5 style="margin: 0; font-weight: 600;">Member Attendance Records</h5>
+                <div class="card-header" style="background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%); border-bottom: 2px solid #0a58ca;">
+                    <h5 style="margin: 0; font-weight: 700; color: white;">
+                        <i class="fas fa-clipboard-list me-2"></i>Member Attendance Records
+                    </h5>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table">
+                        <table class="table mb-0">
                             <thead>
-                                <tr style="border-bottom: 2px solid #dee2e6;">
-                                    <th style="color: #666;">Member ID</th>
-                                    <th style="color: #666;">Member Name</th>
-                                    <th style="color: #666;">Status</th>
-                                    <th style="color: #666;">Time In</th>
-                                    <th style="color: #666;">Remarks</th>
+                                <tr style="background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%); border-bottom: 2px solid #0a58ca;">
+                                    <th style="color: white; font-weight: 700; padding: 1rem;">Member ID</th>
+                                    <th style="color: white; font-weight: 700; padding: 1rem;">Member Name</th>
+                                    <th style="color: white; font-weight: 700; padding: 1rem;">Status</th>
+                                    <th style="color: white; font-weight: 700; padding: 1rem;">Time In</th>
+                                    <th style="color: white; font-weight: 700; padding: 1rem;">Remarks</th>
                                     @if($meeting->status === 'ongoing')
-                                        <th style="color: #666;">Actions</th>
+                                        <th style="color: white; font-weight: 700; padding: 1rem;">Actions</th>
                                     @endif
                                 </tr>
                             </thead>
                             <tbody>
                                 @forelse($meeting->attendances as $attendance)
-                                    <tr style="border-bottom: 1px solid #f0f0f0;">
-                                        <td style="color: #333;">{{ $attendance->member->member_id }}</td>
-                                        <td style="color: #333;">{{ $attendance->member->full_name }}</td>
-                                        <td>
-                                            <span style="background: {{ $attendance->status === 'present' ? '#d4edda' : ($attendance->status === 'absent' ? '#f8d7da' : '#fff3cd') }}; color: {{ $attendance->status === 'present' ? '#155724' : ($attendance->status === 'absent' ? '#721c24' : '#856404') }}; padding: 0.25rem 0.75rem; border-radius: 15px; font-size: 0.85rem; font-weight: 500;">
-                                                {{ ucfirst($attendance->status) }}
-                                            </span>
+                                    <tr style="border-bottom: 1px solid #e9ecef; transition: all 0.2s ease;" onmouseover="this.style.backgroundColor='#f8f9fa';" onmouseout="this.style.backgroundColor='white';">
+                                        <td style="color: #212529; font-weight: 600; padding: 1rem;">{{ $attendance->member->member_id }}</td>
+                                        <td style="color: #212529; font-weight: 500; padding: 1rem;">{{ $attendance->member->full_name }}</td>
+                                        <td style="padding: 1rem;">
+                                            @if($attendance->status === 'present')
+                                                <span style="background: #d1e7dd; color: #0f5132; padding: 0.35rem 0.75rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; display: inline-block;">
+                                                    <i class="fas fa-check-circle me-1"></i>Present
+                                                </span>
+                                            @elseif($attendance->status === 'absent')
+                                                <span style="background: #f8d7da; color: #842029; padding: 0.35rem 0.75rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; display: inline-block;">
+                                                    <i class="fas fa-times-circle me-1"></i>Absent
+                                                </span>
+                                            @else
+                                                <span style="background: #fff3cd; color: #664d03; padding: 0.35rem 0.75rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; display: inline-block;">
+                                                    <i class="fas fa-question-circle me-1"></i>{{ ucfirst($attendance->status) }}
+                                                </span>
+                                            @endif
                                         </td>
-                                        <td style="color: #999;">
-                                            {{ $attendance->time_in ? $attendance->time_in->setTimezone('Asia/Manila')->format('h:i A') : 'N/A' }}
+                                        <td style="color: #495057; font-weight: 500; padding: 1rem;">
+                                            @if($attendance->time_in)
+                                                <i class="fas fa-clock text-primary me-2"></i>{{ $attendance->time_in->setTimezone('Asia/Manila')->format('h:i A') }}
+                                            @else
+                                                <span style="color: #adb5bd;">N/A</span>
+                                            @endif
                                         </td>
-                                        <td style="color: #999;">
-                                            {{ $attendance->remarks ?? '-' }}
+                                        <td style="color: #495057; padding: 1rem;">
+                                            @if($attendance->remarks)
+                                                <span style="background: #e7f3ff; color: #0c5aa0; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.85rem;">{{ $attendance->remarks }}</span>
+                                            @else
+                                                <span style="color: #adb5bd;">—</span>
+                                            @endif
                                         </td>
                                         @if($meeting->status === 'ongoing')
-                                            <td>
+                                            <td style="padding: 1rem;">
                                                 @if($attendance->status === 'absent')
-                                                    <button class="btn btn-sm btn-outline-warning" data-member-id="{{ $attendance->member->id }}" onclick="markExcused(this)">
-                                                        Excuse
+                                                    <button class="btn btn-sm btn-outline-warning" data-member-id="{{ $attendance->member->id }}" onclick="markExcused(this)" style="border-color: #ff9800; color: #ff9800; font-weight: 600;">
+                                                        <i class="fas fa-exclamation-circle me-1"></i>Excuse
                                                     </button>
+                                                @else
+                                                    <span style="color: #adb5bd; font-size: 0.85rem;">—</span>
                                                 @endif
                                             </td>
                                         @endif
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="6" style="text-align: center; padding: 2rem; color: #999;">
+                                        <td colspan="6" style="text-align: center; padding: 3rem 2rem; color: #6c757d;">
+                                            <i class="fas fa-inbox" style="font-size: 2rem; color: #dee2e6; display: block; margin-bottom: 1rem;"></i>
                                             No attendance records yet.
                                         </td>
                                     </tr>

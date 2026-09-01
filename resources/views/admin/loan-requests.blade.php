@@ -4,6 +4,9 @@
 @section('subtitle', 'Review and manage member loan requests')
 
 @section('content')
+<!-- Notification Container -->
+<div id="notificationContainer" style="position: fixed; top: 20px; right: 20px; z-index: 9999;"></div>
+
 <div class="container-fluid">
     <!-- Statistics Row -->
     <div class="row mb-4">
@@ -42,6 +45,9 @@
                 <div class="card-body">
                     <div id="pending-requests-list" class="row">
                         <div class="col-12 text-center py-4">
+                            <div class="spinner-border text-primary mb-3" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
                             <p class="text-muted">Loading pending requests...</p>
                         </div>
                     </div>
@@ -152,18 +158,56 @@ function getLoanTypeColor(type) {
     return colors[(type || 'cash').toLowerCase()] || '#2ecc71';
 }
 
+// Helper function to show notifications
+function showNotification(message, type = 'success', duration = 5000) {
+    const container = document.getElementById('notificationContainer');
+    const alertClass = type === 'success' ? 'alert-success' : type === 'error' ? 'alert-danger' : 'alert-info';
+    const icon = type === 'success' ? 'fas fa-check-circle' : type === 'error' ? 'fas fa-exclamation-circle' : 'fas fa-info-circle';
+    
+    const notificationEl = document.createElement('div');
+    notificationEl.className = `alert ${alertClass} alert-dismissible fade show`;
+    notificationEl.role = 'alert';
+    notificationEl.innerHTML = `
+        <i class="${icon}" style="margin-right: 0.5rem;"></i>
+        <strong>${message}</strong>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    
+    container.appendChild(notificationEl);
+    
+    setTimeout(() => {
+        notificationEl.remove();
+    }, duration);
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     loadPendingRequests();
+    loadApprovedRequests();
+    loadRejectedRequests();
     document.getElementById('rejectionForm').addEventListener('submit', handleRejection);
 });
 
 function loadPendingRequests() {
-    fetch('/api/admin/loan-requests/pending')
-        .then(response => response.json())
+    console.log('Loading pending requests...');
+    fetch('/admin/api/loan-requests/pending')
+        .then(response => {
+            console.log('Response status:', response.status);
+            console.log('Response ok:', response.ok);
+            if (!response.ok) {
+                return response.text().then(text => {
+                    console.error('Response text:', text);
+                    throw new Error('Network response was not ok - Status: ' + response.status + ' - ' + text);
+                });
+            }
+            return response.json();
+        })
         .then(data => {
+            console.log('Received data:', data);
+            console.log('Requests array:', data.requests);
+            console.log('Requests length:', data.requests ? data.requests.length : 'no requests');
             document.getElementById('pending-count').textContent = data.count;
             
-            if (data.requests.length === 0) {
+            if (!data.requests || data.requests.length === 0) {
                 document.getElementById('pending-requests-list').innerHTML = `
                     <div class="col-12 text-center py-4">
                         <i class="fas fa-inbox" style="font-size: 3rem; color: #dee2e6; margin-bottom: 1rem; display: block;"></i>
@@ -171,7 +215,10 @@ function loadPendingRequests() {
                     </div>
                 `;
             } else {
-                const html = data.requests.map(req => `
+                try {
+                    const html = data.requests.map(req => {
+                        console.log('Rendering request:', req);
+                        return `
                     <div class="col-md-6 mb-3">
                         <div class="card h-100">
                             <div class="card-body">
@@ -221,15 +268,41 @@ function loadPendingRequests() {
                             </div>
                         </div>
                     </div>
-                `).join('');
-                document.getElementById('pending-requests-list').innerHTML = html;
+                `;
+                    }).join('');
+                    console.log('Generated HTML length:', html.length);
+                    document.getElementById('pending-requests-list').innerHTML = html;
+                } catch(error) {
+                    console.error('Error rendering requests:', error);
+                    showNotification('Error rendering requests: ' + error.message, 'error');
+                    document.getElementById('pending-requests-list').innerHTML = `
+                        <div class="col-12 text-center py-4">
+                            <i class="fas fa-exclamation-triangle text-danger"></i>
+                            <p class="text-danger">Error rendering requests. Check console for details.</p>
+                        </div>
+                    `;
+                }
             }
         })
-        .catch(error => console.error('Error loading pending requests:', error));
+        .catch(error => {
+            console.error('Error loading pending requests:', error);
+            console.error('Error message:', error.message);
+            showNotification('Error loading pending requests: ' + error.message, 'error');
+            document.getElementById('pending-requests-list').innerHTML = `
+                <div class="col-12 text-center py-4">
+                    <i class="fas fa-exclamation-triangle text-danger" style="font-size: 3rem; margin-bottom: 1rem; display: block;"></i>
+                    <p class="text-danger mb-2">Error loading requests. Please try again.</p>
+                    <small class="text-muted d-block mb-3">Check browser console (F12) for details</small>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="loadPendingRequests()">
+                        <i class="fas fa-redo"></i> Retry
+                    </button>
+                </div>
+            `;
+        });
 }
 
 function viewAndApprove(requestId) {
-    fetch(`/api/admin/loan-requests/${requestId}`)
+    fetch(`/admin/api/loan-requests/${requestId}`)
         .then(response => response.json())
         .then(data => {
             const detailsHtml = `
@@ -313,90 +386,291 @@ function viewAndApprove(requestId) {
             const actionsHtml = `
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 <button type="button" class="btn btn-success" onclick="approveRequest(${requestId})">
-                    <i class="fas fa-check"></i> Approve This Request
+                    <i class="fas fa-check"></i> Approve Request
+                </button>
+                <button type="button" class="btn btn-danger" onclick="showRejectionModal(${requestId})">
+                    <i class="fas fa-times"></i> Reject Request
                 </button>
             `;
+            
             document.getElementById('requestDetailsActions').innerHTML = actionsHtml;
-
+            
             const modal = new bootstrap.Modal(document.getElementById('requestDetailModal'));
             modal.show();
         })
         .catch(error => {
-            console.error('Error loading request details:', error);
-            alert('Error loading request details');
+            console.error('Error:', error);
+            showNotification('Error loading request details', 'error');
         });
 }
 
 function approveRequest(requestId) {
-    if (!confirm('Are you sure you want to approve this loan request?')) {
-        return;
-    }
-
-    const notes = prompt('Add approval notes (optional):', '');
-
-    fetch(`/api/admin/loan-requests/${requestId}/approve`, {
+    console.log('Approving request ID:', requestId);
+    
+    // Show loading notification
+    showNotification('Processing approval...', 'info', 2000);
+    
+    const url = `/admin/api/loan-requests/${requestId}/approve`;
+    console.log('Approval URL:', url);
+    
+    fetch(url, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Accept': 'application/json'
         },
         body: JSON.stringify({
-            notes: notes || ''
+            notes: ''
         })
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('Response status:', response.status);
+        console.log('Response ok:', response.ok);
+        
+        // Clone the response to read it multiple times
+        return response.clone().text().then(text => {
+            console.log('Raw response:', text);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${text}`);
+            }
+            
+            // Try to parse as JSON
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                console.error('Failed to parse JSON:', e);
+                throw new Error('Invalid JSON response: ' + text.substring(0, 100));
+            }
+        });
+    })
     .then(data => {
+        console.log('Approval response data:', data);
         if (data.success) {
-            alert('Loan request approved successfully! Loan #' + data.loan.loan_number + ' created.');
-            bootstrap.Modal.getInstance(document.getElementById('requestDetailModal')).hide();
-            loadPendingRequests();
+            // Close the detail modal
+            const detailModal = bootstrap.Modal.getInstance(document.getElementById('requestDetailModal'));
+            if (detailModal) {
+                detailModal.hide();
+            }
+            
+            // Show success notification with loan number
+            showNotification(`✓ Loan request approved successfully! Loan #${data.loan.loan_number} created.`, 'success', 6000);
+            
+            // Reload the pending requests list
+            setTimeout(() => {
+                loadPendingRequests();
+            }, 500);
         } else {
-            alert('Error: ' + (data.error || 'Failed to approve request'));
+            showNotification('❌ Error: ' + (data.error || 'Failed to approve request'), 'error', 6000);
         }
     })
     .catch(error => {
-        console.error('Error:', error);
-        alert('Error approving request');
+        console.error('Error approving request:', error);
+        console.error('Error stack:', error.stack);
+        showNotification('❌ Error: ' + error.message, 'error', 8000);
     });
 }
 
 function showRejectionModal(requestId) {
     document.getElementById('rejectionRequestId').value = requestId;
+    
+    // Hide detail modal if open
+    const detailModal = bootstrap.Modal.getInstance(document.getElementById('requestDetailModal'));
+    if (detailModal) {
+        detailModal.hide();
+    }
+    
+    // Show rejection modal
     const modal = new bootstrap.Modal(document.getElementById('rejectionModal'));
     modal.show();
 }
 
 function handleRejection(e) {
     e.preventDefault();
-
+    
     const requestId = document.getElementById('rejectionRequestId').value;
     const notes = document.getElementById('rejectionNotes').value;
+    
+    console.log('Rejecting request ID:', requestId);
+    console.log('Rejection notes:', notes);
+    
+    if (!notes || notes.trim() === '') {
+        showNotification('⚠️ Please provide a reason for rejection', 'error', 4000);
+        return;
+    }
 
-    fetch(`/api/admin/loan-requests/${requestId}/reject`, {
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+
+    const url = `/admin/api/loan-requests/${requestId}/reject`;
+    console.log('Rejection URL:', url);
+
+    fetch(url, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Accept': 'application/json'
         },
         body: JSON.stringify({
             notes: notes
         })
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('Response status:', response.status);
+        console.log('Response ok:', response.ok);
+        
+        return response.clone().text().then(text => {
+            console.log('Raw response:', text);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${text}`);
+            }
+            
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                console.error('Failed to parse JSON:', e);
+                throw new Error('Invalid JSON response: ' + text.substring(0, 100));
+            }
+        });
+    })
     .then(data => {
+        console.log('Rejection response data:', data);
         if (data.success) {
-            alert('Loan request rejected successfully.');
-            bootstrap.Modal.getInstance(document.getElementById('rejectionModal')).hide();
+            // Close the rejection modal
+            const rejectionModal = bootstrap.Modal.getInstance(document.getElementById('rejectionModal'));
+            if (rejectionModal) {
+                rejectionModal.hide();
+            }
+            
+            // Reset the form
             document.getElementById('rejectionForm').reset();
-            loadPendingRequests();
+            
+            // Show success notification
+            showNotification('✓ Loan request rejected successfully.', 'success', 6000);
+            
+            // Reload the pending requests list
+            setTimeout(() => {
+                loadPendingRequests();
+            }, 500);
         } else {
-            alert('Error: ' + (data.error || 'Failed to reject request'));
+            showNotification('❌ Error: ' + (data.error || 'Failed to reject request'), 'error', 6000);
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
         }
     })
     .catch(error => {
-        console.error('Error:', error);
-        alert('Error rejecting request');
+        console.error('Error rejecting request:', error);
+        console.error('Error stack:', error.stack);
+        showNotification('❌ Error: ' + error.message, 'error', 8000);
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
     });
+}
+
+function loadApprovedRequests() {
+    fetch('/admin/api/loan-requests/approved')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('approved-count').textContent = data.approved_count || 0;
+            
+            if (!data.requests || data.requests.length === 0) {
+                document.getElementById('approved-requests-list').innerHTML = `
+                    <p class="text-muted text-center py-3">No approved requests this month</p>
+                `;
+            } else {
+                const html = data.requests.map(req => `
+                    <div class="list-group-item p-3 mb-2 border rounded">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="mb-1">${req.member_name}</h6>
+                                <small class="text-muted">${req.member_id}</small>
+                            </div>
+                            <span class="badge bg-success">Approved</span>
+                        </div>
+                        <div class="row g-2 mt-2 text-sm">
+                            <div class="col-6">
+                                <small class="text-muted d-block">Amount</small>
+                                <small><strong>${req.amount}</strong></small>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted d-block">Type</small>
+                                <small><strong>${capitalizeFirst(req.loan_type)}</strong></small>
+                            </div>
+                        </div>
+                        <small class="text-muted d-block mt-2">
+                            <i class="far fa-calendar"></i> Approved ${formatDate(req.approved_at)}
+                        </small>
+                    </div>
+                `).join('');
+                document.getElementById('approved-requests-list').innerHTML = html;
+            }
+        })
+        .catch(error => {
+            console.error('Error loading approved requests:', error);
+            document.getElementById('approved-requests-list').innerHTML = `
+                <p class="text-danger text-center py-3">Error loading approved requests</p>
+            `;
+        });
+}
+
+function loadRejectedRequests() {
+    fetch('/admin/api/loan-requests/rejected')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('rejected-count').textContent = data.rejected_count || 0;
+            
+            if (!data.requests || data.requests.length === 0) {
+                document.getElementById('rejected-requests-list').innerHTML = `
+                    <p class="text-muted text-center py-3">No rejected requests this month</p>
+                `;
+            } else {
+                const html = data.requests.map(req => `
+                    <div class="list-group-item p-3 mb-2 border rounded">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="mb-1">${req.member_name}</h6>
+                                <small class="text-muted">${req.member_id}</small>
+                            </div>
+                            <span class="badge bg-danger">Rejected</span>
+                        </div>
+                        <div class="row g-2 mt-2 text-sm">
+                            <div class="col-6">
+                                <small class="text-muted d-block">Amount</small>
+                                <small><strong>${req.amount}</strong></small>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted d-block">Type</small>
+                                <small><strong>${capitalizeFirst(req.loan_type)}</strong></small>
+                            </div>
+                        </div>
+                        <small class="text-muted d-block mt-2">
+                            <i class="fas fa-comment"></i> ${req.reason || 'No reason provided'}
+                        </small>
+                        <small class="text-muted d-block">
+                            <i class="far fa-calendar"></i> Rejected ${formatDate(req.rejected_at)}
+                        </small>
+                    </div>
+                `).join('');
+                document.getElementById('rejected-requests-list').innerHTML = html;
+            }
+        })
+        .catch(error => {
+            console.error('Error loading rejected requests:', error);
+            document.getElementById('rejected-requests-list').innerHTML = `
+                <p class="text-danger text-center py-3">Error loading rejected requests</p>
+            `;
+        });
+}
+
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+    return date.toLocaleDateString('en-US', options);
 }
 </script>
 
