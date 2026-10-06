@@ -103,6 +103,7 @@ class LoanRequest extends Model
             'next_payment_date' => now()->addMonth(),
             'status' => 'active',
         ]);
+        $loan->createInstallmentSchedule();
 
         // Log the approval
         AuditLog::log(

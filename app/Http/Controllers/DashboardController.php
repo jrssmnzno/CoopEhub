@@ -213,12 +213,12 @@ class DashboardController extends Controller
         $totalInterest = ($monthlyPayment * $termMonths) - $principal;
 
         return response()->json([
-            'principal' => number_format($principal, 2),
+            'principal' => round((float) $principal, 2),
             'interest_rate' => $interestRate . '%',
             'term_months' => $termMonths,
-            'monthly_payment' => number_format($monthlyPayment, 2),
-            'total_interest' => number_format($totalInterest, 2),
-            'total_amount' => number_format($principal + $totalInterest, 2),
+            'monthly_payment' => round($monthlyPayment, 2),
+            'total_interest' => round($totalInterest, 2),
+            'total_amount' => round($principal + $totalInterest, 2),
         ]);
     }
 }

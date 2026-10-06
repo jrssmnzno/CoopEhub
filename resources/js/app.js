@@ -152,15 +152,6 @@ document.addEventListener('DOMContentLoaded', () => {
     new TableFilter('receiptLogTable', 'receiptFilter');
     new TableFilter('loanLedgerTable', 'ledgerFilter');
 
-    // Initialize Bootstrap modals
-    document.querySelectorAll('[data-bs-toggle="modal"]').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const target = this.getAttribute('data-bs-target');
-            const modal = new bootstrap.Modal(document.querySelector(target));
-            modal.show();
-        });
-    });
-
     // Print function
     window.printPromissoryNote = function() {
         const printWindow = window.open('', '', 'height=600,width=800');

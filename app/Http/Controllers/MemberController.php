@@ -380,6 +380,7 @@ class MemberController extends Controller
             'interest_due' => 0,
             'payments_made' => 0,
         ]);
+        $loan->createInstallmentSchedule();
 
         // Create audit log entry
         \App\Models\AuditLog::create([

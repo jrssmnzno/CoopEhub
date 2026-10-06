@@ -56,14 +56,29 @@ class LoanPortfolioController extends Controller
             });
 
         $loans = $member->loans()
-            ->where('status', 'active')
+            ->whereIn('status', ['active', 'overdue'])
             ->get()
             ->map(function ($loan) {
-                $monthlyPayment = Loan::calculateMonthlyPayment(
-                    $loan->principal_amount,
-                    $loan->interest_rate,
-                    $loan->term_months
-                );
+                $nextInstallment = $loan->installments()
+                    ->whereIn('status', ['pending', 'partial'])
+                    ->orderBy('due_date')
+                    ->first();
+                $unpaidInstallments = $loan->installments()->whereIn('status', ['pending', 'partial'])->get();
+                $arrears = $unpaidInstallments
+                    ->filter(fn ($installment) => $installment->due_date->lte(today()))
+                    ->sum(fn ($installment) => max(
+                        0,
+                        (float) $installment->principal_due - (float) $installment->principal_paid
+                    ) + max(
+                        0,
+                        (float) $installment->interest_due - (float) $installment->interest_paid
+                    ));
+                $installmentDue = $nextInstallment
+                    ? max(0, (float) $nextInstallment->principal_due - (float) $nextInstallment->principal_paid)
+                        + max(0, (float) $nextInstallment->interest_due - (float) $nextInstallment->interest_paid)
+                    : 0;
+                $nextPaymentDate = $nextInstallment?->due_date ?? $loan->next_payment_date;
+                $monthlyPayment = (float) $loan->monthly_payment;
                 
                 return (object)[
                     'id' => $loan->id,
@@ -76,9 +91,12 @@ class LoanPortfolioController extends Controller
                     'term_months' => $loan->term_months,
                     'balance' => $loan->running_balance,
                     'running_balance' => $loan->running_balance,
+                    'arrears' => $arrears,
+                    'installment_due' => $installmentDue,
+                    'maximum_payment' => $loan->calculateMaximumPaymentAmount(today()),
                     'payment' => $monthlyPayment,
                     'monthly_payment' => $monthlyPayment,
-                    'next_payment_date' => $loan->next_payment_date,
+                    'next_payment_date' => $nextPaymentDate,
                     'status' => $loan->status,
                 ];
             });

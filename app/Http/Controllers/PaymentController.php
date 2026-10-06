@@ -6,6 +6,8 @@ use App\Models\Member;
 use App\Models\Loan;
 use App\Models\Transaction;
 use App\Models\AuditLog;
+use App\Models\LoanInstallmentPayment;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -18,7 +20,7 @@ class PaymentController extends Controller
     public function processPayment(Request $request, Loan $loan)
     {
         $validated = $request->validate([
-            'amount' => ['required', 'numeric', 'min:0.01'],
+            'amount' => ['required', 'numeric', 'decimal:0,2', 'min:0.01'],
             'payment_date' => ['required', 'date', 'date_format:Y-m-d', 'before_or_equal:today'],
             'payment_method' => ['nullable', 'in:cash,check,bank_transfer'],
             'reference_number' => ['nullable', 'string'],
@@ -29,31 +31,21 @@ class PaymentController extends Controller
             DB::beginTransaction();
 
             $paymentAmount = $validated['amount'];
+            $paymentDate = Carbon::parse($validated['payment_date']);
+            $loan = Loan::query()->lockForUpdate()->findOrFail($loan->id);
+            $loan->createInstallmentSchedule();
             $member = $loan->member;
 
-            // Process payment with interest-first logic
-            $breakdown = $loan->processPayment($paymentAmount);
+            $maximumAllowedPayment = $loan->calculateMaximumPaymentAmount($paymentDate);
+            if ($paymentAmount > $maximumAllowedPayment + 0.001) {
+                DB::rollBack();
 
-            // Update loan record
-            $loan->increment('interest_paid', $breakdown['interest']);
-            $loan->increment('principal_paid', $breakdown['principal']);
-            $loan->decrement('running_balance', $breakdown['principal']);
-            $loan->increment('payments_made');
-
-            // Update next payment date
-            if ($loan->running_balance > 0) {
-                $loan->update([
-                    'next_payment_date' => now()->addMonth(),
-                ]);
-            } else {
-                // Clear next payment date for fully paid loans
-                $loan->update([
-                    'next_payment_date' => null,
-                ]);
+                return response()->json([
+                    'message' => 'Payment exceeds the current amount owed. Maximum accepted is ₱' . number_format($maximumAllowedPayment, 2),
+                ], 422);
             }
 
-            // Update loan status based on current running balance
-            $loan->updateStatus();
+            $breakdown = $loan->processPayment($paymentAmount, $paymentDate);
             $loan->refresh();
 
             // Update member balance
@@ -67,17 +59,27 @@ class PaymentController extends Controller
                 'created_by' => Auth::id(),
                 'type' => 'principal_payment',
                 'reference_number' => $validated['reference_number'] ?? null,
-                'description' => 'Payment processed for ' . $loan->loan_number,
+                'description' => 'Payment processed for ' . $loan->loan_number
+                    . ($breakdown['extra_principal'] > 0 ? ' (excess applied to principal)' : ''),
                 'principal_amount' => $breakdown['principal'],
                 'interest_amount' => $breakdown['interest'],
                 'penalty_amount' => 0,
                 'total_amount' => $paymentAmount,
                 'member_balance_after' => $member->outstanding_balance,
                 'loan_balance_after' => $loan->running_balance,
-                'processed_at' => now()->setTimeFromTimeString($validated['payment_date'] . ' ' . now()->format('H:i:s')),
+                'processed_at' => $paymentDate->copy()->setTimeFromTimeString(now()->format('H:i:s')),
                 'payment_method' => $validated['payment_method'] ?? 'cash',
                 'ip_address' => request()->ip(),
             ]);
+
+            foreach ($breakdown['allocations'] as $allocation) {
+                LoanInstallmentPayment::create([
+                    'transaction_id' => $transaction->id,
+                    'loan_installment_id' => $allocation['installment_id'],
+                    'principal_amount' => $allocation['principal_amount'],
+                    'interest_amount' => $allocation['interest_amount'],
+                ]);
+            }
 
             // Log the transaction
             AuditLog::log(
@@ -93,9 +95,12 @@ class PaymentController extends Controller
                     'principal' => $breakdown['principal'],
                     'interest' => $breakdown['interest'],
                     'total' => $paymentAmount,
+                    'extra_principal' => $breakdown['extra_principal'],
+                    'installments_paid' => $breakdown['installments_paid'],
                 ],
-                'Payment processed: Principal ₱' . number_format($breakdown['principal'], 2) . 
-                ', Interest ₱' . number_format($breakdown['interest'], 2)
+                'Payment processed: Principal ₱' . number_format($breakdown['principal'], 2) .
+                ', Interest ₱' . number_format($breakdown['interest'], 2) .
+                ($breakdown['extra_principal'] > 0 ? ', Extra principal ₱' . number_format($breakdown['extra_principal'], 2) : '')
             );
 
             DB::commit();
@@ -107,7 +112,9 @@ class PaymentController extends Controller
                     'number' => $transaction->transaction_number,
                     'principal' => $breakdown['principal'],
                     'interest' => $breakdown['interest'],
-                    'remaining' => $breakdown['remaining'],
+                    'extra_principal' => $breakdown['extra_principal'],
+                    'installments_paid' => $breakdown['installments_paid'],
+                    'interest_due_remaining' => $breakdown['interest_due_remaining'],
                     'loan_balance' => $loan->running_balance,
                 ],
                 'loan' => [
@@ -115,6 +122,8 @@ class PaymentController extends Controller
                     'status' => $loan->status,
                     'running_balance' => $loan->running_balance,
                     'next_payment_date' => $loan->next_payment_date,
+                    'monthly_payment' => $loan->monthly_payment,
+                    'maximum_payment' => $loan->calculateMaximumPaymentAmount(today()),
                 ],
             ]);
 

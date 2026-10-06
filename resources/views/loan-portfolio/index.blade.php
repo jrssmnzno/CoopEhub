@@ -141,9 +141,12 @@
                             @foreach($loans as $loan)
                                 <option value="{{ $loan->id }}" 
                                     data-balance="{{ $loan->running_balance }}"
-                                    data-due-date="{{ $loan->next_payment_date->format('Y-m-d') }}"
-                                    data-monthly="{{ $loan->monthly_payment }}">
-                                    Loan #{{ $loan->number }} - Balance: ₱{{ number_format($loan->running_balance, 2) }} | Due: {{ $loan->next_payment_date->format('M d, Y') }}
+                                    data-due-date="{{ $loan->next_payment_date?->format('Y-m-d') }}"
+                                    data-monthly="{{ $loan->monthly_payment }}"
+                                    data-installment-due="{{ $loan->installment_due }}"
+                                    data-arrears="{{ $loan->arrears }}"
+                                    data-max-payment="{{ $loan->maximum_payment }}">
+                                    Loan #{{ $loan->number }} - Balance: ₱{{ number_format($loan->running_balance, 2) }} | Due: {{ $loan->next_payment_date?->format('M d, Y') ?? 'Not scheduled' }}
                                 </option>
                             @endforeach
                         </select>
@@ -179,10 +182,10 @@
                                 <input type="number" name="amount" class="form-control @error('amount') is-invalid @enderror" 
                                        id="paymentAmount" step="0.01" min="0.01" placeholder="0.00" required 
                                        oninput="validatePaymentAmount()">
-                                <span class="input-group-text" id="maxAmountText">Max: ₱0.00</span>
+                                <span class="input-group-text" id="maxAmountText">Max accepted: ₱0.00</span>
                             </div>
                             <small class="form-text text-muted d-block mt-1">
-                                Maximum allowed: <strong id="maxAmountValue">₱0.00</strong> (pending balance)
+                                Maximum accepted today: <strong id="maxAmountValue">₱0.00</strong> (principal balance plus interest already due)
                             </small>
                             @error('amount')
                                 <div class="invalid-feedback d-block">{{ $message }}</div>
@@ -200,11 +203,15 @@
                                 <div class="col-6 text-end text-success"><strong id="previewAmount">₱0.00</strong></div>
                             </div>
                             <div class="row mb-2">
-                                <div class="col-6"><strong>Loan Balance After:</strong></div>
-                                <div class="col-6 text-end"><strong id="previewBalance">₱0.00</strong></div>
+                                <div class="col-6"><strong>Current installment due:</strong></div>
+                                <div class="col-6 text-end"><strong id="previewDue">₱0.00</strong></div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-6"><strong>Unpaid installments due:</strong></div>
+                                <div class="col-6 text-end"><strong id="previewArrears">₱0.00</strong></div>
                             </div>
                             <div class="row">
-                                <div class="col-6"><strong>Monthly Installment:</strong></div>
+                                <div class="col-6"><strong>Monthly installment:</strong></div>
                                 <div class="col-6 text-end"><strong id="previewMonthly">₱0.00</strong></div>
                             </div>
                         </div>
@@ -605,8 +612,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const paymentAmount = document.getElementById('paymentAmount');
             const paymentDate = document.getElementById('paymentDate');
             const loanId = loanSelect.value;
-            const maxAmount = parseFloat(loanSelect.options[loanSelect.selectedIndex].dataset.balance);
             const selectedOption = loanSelect.options[loanSelect.selectedIndex];
+            const maxAmount = parseFloat(selectedOption.dataset.maxPayment);
             
             // Validate loan selection
             if (!loanId) {
@@ -621,8 +628,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            if (amount > maxAmount) {
-                showCustomAlert(`Payment amount cannot exceed ₱${number_format(maxAmount, 2)}`, 'Amount Exceeded', 'error', 3000);
+            if (amount > maxAmount + 0.001) {
+                showCustomAlert(`Payment cannot exceed today's amount owed: ₱${number_format(maxAmount, 2)}`, 'Amount Exceeded', 'error', 3000);
                 return;
             }
             
@@ -646,15 +653,12 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => {
                 // Handle both successful and error responses
                 if (!response.ok && response.status === 422) {
-                    // Validation error
                     return response.json().then(data => {
-                        const errors = data.errors;
-                        let errorMsg = 'Validation Error:\n';
-                        for (const field in errors) {
-                            errorMsg += `- ${field}: ${errors[field][0]}\n`;
-                        }
-                        showCustomAlert(errorMsg, 'Validation Error', 'warning', 5000);
-                        throw new Error('Validation failed');
+                        const messages = Object.values(data.errors || {}).flat();
+                        const errorMsg = messages.length
+                            ? messages.join('\n')
+                            : data.message || 'The payment could not be accepted.';
+                        throw new Error(errorMsg);
                     });
                 }
                 return response.json();
@@ -675,13 +679,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     const dateObj = new Date(paymentDate.value);
                     const formattedDate = dateObj.toISOString().split('T')[0];
                     
+                    const paymentStatus = transaction.installments_paid > 0
+                        ? `${transaction.installments_paid} installment${transaction.installments_paid === 1 ? '' : 's'} paid`
+                        : 'Partial installment / principal payment';
                     const newRow = `<tr>
                         <td>${formattedDate}</td>
                         <td><small>-</small></td>
                         <td class="text-success">₱${number_format(parseFloat(transaction.principal), 2)}</td>
                         <td class="text-success">₱${number_format(parseFloat(transaction.interest), 2)}</td>
                         <td><strong>₱${number_format(amount, 2)}</strong></td>
-                        <td><span class="badge bg-success">Paid</span></td>
+                        <td><span class="badge bg-success">${paymentStatus}</span></td>
                         <td>₱${number_format(parseFloat(transaction.loan_balance), 2)}</td>
                     </tr>`;
                     
@@ -703,8 +710,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     // Update loan balance in dropdown
                     selectedOption.dataset.balance = transaction.loan_balance;
-                    const loanText = `Loan #${selectedOption.text.split('#')[1].split(' -')[0]} - Balance: ₱${number_format(parseFloat(transaction.loan_balance), 2)} | Due: ${selectedOption.text.split('Due: ')[1]}`;
-                    selectedOption.textContent = loanText;
+                    selectedOption.dataset.maxPayment = loanData.maximum_payment;
+                    selectedOption.dataset.dueDate = loanData.next_payment_date || '';
+                    selectedOption.dataset.monthly = loanData.monthly_payment;
+                    const loanNumber = selectedOption.text.split('#')[1].split(' -')[0];
+                    const dueText = loanData.next_payment_date
+                        ? new Date(`${loanData.next_payment_date}T00:00:00`).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+                        : 'Not scheduled';
+                    selectedOption.textContent = `Loan #${loanNumber} - Balance: ₱${number_format(parseFloat(transaction.loan_balance), 2)} | Due: ${dueText}`;
                     
                     // If fully paid, disable the loan selection and show message
                     if (isFullyPaid) {
@@ -723,7 +736,7 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .catch(error => {
                 console.error('Error:', error);
-                showCustomAlert('An error occurred while processing the payment', 'Error', 'error', 4000);
+                showCustomAlert(error.message || 'An error occurred while processing the payment', 'Payment Not Accepted', 'warning', 5000);
             });
         });
     }
@@ -748,27 +761,29 @@ function updatePaymentForm() {
     if (!loanSelect.value) {
         dueDateReminder.style.display = 'none';
         maxAmountValue.textContent = '₱0.00';
-        maxAmountText.textContent = 'Max: ₱0.00';
+        maxAmountText.textContent = 'Max accepted: ₱0.00';
         paymentAmount.max = '0';
         paymentAmount.value = '';
         postPaymentBtn.disabled = true;
         return;
     }
     
-    const balance = parseFloat(selectedOption.dataset.balance);
+    const maxPayment = parseFloat(selectedOption.dataset.maxPayment);
     const dueDate = selectedOption.dataset.dueDate;
     
-    // Update max amount
-    maxAmountValue.textContent = number_format(balance, 2);
-    maxAmountText.textContent = number_format(balance, 2);
-    maxAmountValue.innerHTML = '₱' + number_format(balance, 2);
-    paymentAmount.max = balance;
+    maxAmountValue.textContent = '₱' + number_format(maxPayment, 2);
+    maxAmountText.textContent = 'Max accepted: ₱' + number_format(maxPayment, 2);
+    paymentAmount.max = maxPayment;
     
     // Update due date reminder
-    const dateObj = new Date(dueDate);
-    const formattedDate = dateObj.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-    dueDateText.textContent = formattedDate;
-    dueDateReminder.style.display = 'block';
+    if (dueDate) {
+        const dateObj = new Date(`${dueDate}T00:00:00`);
+        const formattedDate = dateObj.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+        dueDateText.textContent = formattedDate;
+        dueDateReminder.style.display = 'block';
+    } else {
+        dueDateReminder.style.display = 'none';
+    }
     
     // Enable submit button if form is valid
     postPaymentBtn.disabled = false;
@@ -783,9 +798,6 @@ function validatePaymentAmount() {
     const paymentAmount = document.getElementById('paymentAmount');
     const paymentSummary = document.getElementById('paymentSummary');
     const previewAmount = document.getElementById('previewAmount');
-    const previewBalance = document.getElementById('previewBalance');
-    const previewInterest = document.getElementById('previewInterest');
-    const previewPrincipal = document.getElementById('previewPrincipal');
     
     if (!loanSelect.value) {
         paymentSummary.style.display = 'none';
@@ -793,11 +805,10 @@ function validatePaymentAmount() {
     }
     
     const selectedOption = loanSelect.options[loanSelect.selectedIndex];
-    const balance = parseFloat(selectedOption.dataset.balance);
+    const maxPayment = parseFloat(selectedOption.dataset.maxPayment);
     const amount = parseFloat(paymentAmount.value) || 0;
     
-    // Check if amount exceeds balance
-    if (amount > balance) {
+    if (amount > maxPayment + 0.001) {
         paymentAmount.classList.add('is-invalid');
         paymentSummary.style.display = 'none';
         return;
@@ -805,32 +816,11 @@ function validatePaymentAmount() {
         paymentAmount.classList.remove('is-invalid');
     }
     
-    // Calculate interest due (monthly rate * balance)
-    // Get interest rate from loan
-    const loanSelects = document.querySelectorAll('#loanSelect option');
-    let interestRate = 0;
-    for (let option of loanSelects) {
-        if (option.value === loanSelect.value) {
-            // Get from data attribute - we'd need to add this
-            // For now, estimate or fetch from server
-            break;
-        }
-    }
-    
-    // Show/hide summary
     if (amount > 0) {
-        const remainingBalance = balance - amount;
-        
-        // Estimate interest payment (simple calculation)
-        // In reality, this should come from the server
-        const estimatedMonthlyInterest = (balance * 0.08) / 12; // Rough estimate with 8% rate
-        const interestPortion = Math.min(amount, estimatedMonthlyInterest);
-        const principalPortion = amount - interestPortion;
-        
         previewAmount.textContent = '₱' + number_format(amount, 2);
-        previewBalance.textContent = '₱' + number_format(Math.max(0, remainingBalance), 2);
-        previewInterest.textContent = '₱' + number_format(Math.max(0, interestPortion), 2);
-        previewPrincipal.textContent = '₱' + number_format(Math.max(0, principalPortion), 2);
+        document.getElementById('previewDue').textContent = '₱' + number_format(parseFloat(selectedOption.dataset.installmentDue) || 0, 2);
+        document.getElementById('previewArrears').textContent = '₱' + number_format(parseFloat(selectedOption.dataset.arrears) || 0, 2);
+        document.getElementById('previewMonthly').textContent = '₱' + number_format(parseFloat(selectedOption.dataset.monthly) || 0, 2);
         paymentSummary.style.display = 'block';
     } else {
         paymentSummary.style.display = 'none';
